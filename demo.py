@@ -171,7 +171,10 @@ def main():
             img_vis_list.extend([img_smpl_rgba, smpl_rgba])
 
         img_vis = np.concatenate(img_vis_list, axis=1)
-        imsave(os.path.join(args.out_dir, img_id + '_result.png'), img_vis)
+        img_vis[img_vis<0.0] = 0.0
+        img_vis[img_vis>1.0] = 1.0
+        # omit the forth channel (alpha channel) [transparency]
+        imsave(os.path.join(args.out_dir, img_id + '_result.png'), img_vis[:,:,:3])
 
 
 if __name__ == '__main__':
