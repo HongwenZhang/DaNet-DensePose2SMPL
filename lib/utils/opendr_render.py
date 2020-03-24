@@ -8,7 +8,7 @@ import numpy as np
 from opendr.renderer import ColoredRenderer
 from opendr.lighting import LambertianPointLight
 from opendr.camera import ProjectPoints
-from .smpl_webuser.serialization import load_model
+from smpl_webuser.serialization import load_model
 from skimage.transform import resize
 
 

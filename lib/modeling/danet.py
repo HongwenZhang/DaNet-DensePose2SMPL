@@ -109,7 +109,7 @@ class DaNet(nn.Module):
             part_iuv_map = None
             part_index_map = None
 
-        if 'part_featmaps' in uv_return_dict:
+        if uv_return_dict.has_key('part_featmaps'):
             part_feat_map = uv_return_dict['part_featmaps']
         else:
             part_feat_map = None
@@ -360,7 +360,7 @@ class IUV_Estimator(nn.Module):
 
         if cfg.DANET.USE_LEARNED_RATIO:
             with open(os.path.join('./data/pretrained_model', 'learned_ratio.pkl'), 'rb') as f:
-                pretrain_ratio = pickle.load(f, encoding='iso-8859-1')
+                pretrain_ratio = pickle.load(f)
 
             if cfg.DANET.INPUT_MODE in ['iuv_gt']:
                 self.learned_ratio = nn.Parameter(torch.FloatTensor(pretrain_ratio['ratio']))
