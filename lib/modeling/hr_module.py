@@ -6,7 +6,7 @@ import torch.nn as nn
 import logging
 
 from lib.core.config import cfg
-from res_module import BasicBlock, Bottleneck, IUV_predict_layer
+from .res_module import BasicBlock, Bottleneck, IUV_predict_layer
 
 BN_MOMENTUM = 0.1
 logger = logging.getLogger(__name__)

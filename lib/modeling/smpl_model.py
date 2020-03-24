@@ -35,7 +35,7 @@ class SMPL(nn.Module):
             smpl_model_path = './data/SMPL_data/basicModel_f_lbs_10_207_0_v1.0.0.pkl'
 
         with open(smpl_model_path, 'rb') as f:
-            model = pickle.load(f)
+            model = pickle.load(f, encoding='iso-8859-1')
 
         if obj_saveable:
             self.faces = model['f']
@@ -62,7 +62,7 @@ class SMPL(nn.Module):
         self.parents = model['kintree_table'][0].astype(np.int32)
 
         with open(os.path.join('./data/pretrained_model', 'joint_regressor.pkl'), 'rb') as f:
-            np_joint_regressor = pickle.load(f)
+            np_joint_regressor = pickle.load(f, encoding='iso-8859-1')
 
         if joint_type == 'lsp':
             self.register_buffer('joint_regressor', torch.from_numpy(np_joint_regressor[:, :14]).float())
