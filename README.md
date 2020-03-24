@@ -6,15 +6,15 @@ This repository includes the PyTorch code of the network described in [Learning 
 
 ## Requirements
 
-- python 2.7
+- python 3.7
 
 ### packages
 
-- [PyTorch](https://www.pytorch.org) tested on version 1.0.1.post2
+- [PyTorch](https://www.pytorch.org) tested on version 1.4.0
 
 - [Neural Renderer](https://github.com/daniilidis-group/neural_renderer)
 
-- [opendr](https://github.com/mattloper/opendr) optional
+- [opendr](https://gitlab.eecs.umich.edu/ngv-python-modules/opendr#) optional (maybe not robust enough)
 
 - [smpl_webuser](https://smpl.is.tue.mpg.de) optional
 
@@ -45,7 +45,8 @@ After collecting the above necessary files, the directory structure of `./data` 
     └── basicModel_neutral_lbs_10_207_0_v1.0.0.pkl
 ```
 
-### Demo
+## Demo
+
 1. Download the [pre-trained model](https://drive.google.com/drive/folders/1XlclE5EEX6OPWtQ9p1oubBDAqOcdhuqD?usp=sharing) (trained on [Human3.6M](http://vision.imar.ro/human3.6m/description.php) and [DensePose-COCO](https://densepose.org)) and put it into the `./data/pretrained_model` directory.
 
 2. Run the demo code. Using `--use_opendr` if the `opendr` package is successfully installed.
