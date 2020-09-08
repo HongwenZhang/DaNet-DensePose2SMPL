@@ -63,7 +63,7 @@ After collecting the above necessary files, the directory structure of `./data` 
 1. Run the demo code. Using `--use_opendr` if the `opendr` package is successfully installed.
 
 ```
-python demo.py  --cfg configs/danet_h36m_itw.yaml --load_ckpt ./data/pretrained_model/danet_model_h36m_itw.pth --img_dir ./examples --use_opendr
+python3 demo.py --checkpoint=data/pretrained_model/danet_model_h36m_itw.pt --img_dir ./examples --use_opendr
 ```
 
 2. View visualization results in `./output`. Results are organized (from left to right) as the input image, the estimated IUV maps (global and partial), the rendered IUV of the predicted SMPL model, the predicted SMPL model (front and side views).

@@ -2,7 +2,7 @@
 This script can be used to produce demo results.
 Example usage:
 ```
-python demo.py  --cfg configs/danet_h36m_itw.yaml --load_ckpt ./data/pretrained_model/danet_model_h36m_itw.pth --img_dir ./examples --use_opendr
+python3 demo.py --checkpoint=data/pretrained_model/danet_model_h36m_itw.pt --img_dir ./examples --use_opendr
 ```
 """
 from __future__ import absolute_import
