@@ -1,54 +1,122 @@
-output/*
-data/SMPL_data/*
-data/UV_data/*
-lib/utils/smpl_webuser/*
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
 
-*.pyc
-*~
-
-*.o
+# C extensions
 *.so
-*.pth
 
-# ------------------------------
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# General
-.DS_Store
-.AppleDouble
-.LSOverride
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
 
-# Icon must end with two \r
-Icon
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
 
-# Thumbnails
-._*
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
 
-# Files that might appear in the root of a volume
-.DocumentRevisions-V100
-.fseventsd
-.Spotlight-V100
-.TemporaryItems
-.Trashes
-.VolumeIcon.icns
-.com.apple.timemachine.donotpresent
+# Translations
+*.mo
+*.pot
 
-# Directories potentially created on remote AFP share
-.AppleDB
-.AppleDesktop
-Network Trash Folder
-Temporary Items
-.apdisk
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
 
-*~
+# Flask stuff:
+instance/
+.webassets-cache
 
-# temporary files which can be created if a process still has a handle open of a deleted file
-.fuse_hidden*
+# Scrapy stuff:
+.scrapy
 
-# KDE directory preferences
-.directory
+# Sphinx documentation
+docs/_build/
 
-# Linux trash folder which might appear on any partition or disk
-.Trash-*
+# PyBuilder
+target/
 
-# .nfs files are created when an open file is removed but is still being accessed
-.nfs*
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# celery beat schedule file
+celerybeat-schedule
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+
+# yaml files
+yamls/
+
+# logs
+logs/
+
+# vim swap files
+*.swp
+*.pyc
+
+# data files
+data/*
+# But not the README
+!data/README.md
+
+# ignore prior.py from smplify-x repo
+smplify/prior.py
