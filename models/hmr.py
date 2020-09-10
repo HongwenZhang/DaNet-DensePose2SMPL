@@ -1,3 +1,5 @@
+# This script is borrowed from https://github.com/nkolot/SPIN/blob/master/models/hmr.py
+
 import torch
 import torch.nn as nn
 import torchvision.models.resnet as resnet

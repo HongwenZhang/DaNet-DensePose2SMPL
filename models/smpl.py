@@ -1,3 +1,5 @@
+# This script is borrowed from https://github.com/nkolot/SPIN/blob/master/models/smpl.py
+
 import torch
 import numpy as np
 import smplx

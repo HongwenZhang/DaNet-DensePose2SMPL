@@ -1,4 +1,5 @@
 """
+# This script is borrowed and extended from https://github.com/nkolot/SPIN/blob/master/datasets/mixed_dataset.py
 This file contains the definition of different heterogeneous datasets used for training
 """
 import torch

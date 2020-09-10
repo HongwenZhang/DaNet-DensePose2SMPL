@@ -16,8 +16,6 @@ This repository includes the PyTorch code of the network described in [Learning 
 
 - [opendr](https://gitlab.eecs.umich.edu/ngv-python-modules/opendr#) optional
 
-- [smpl_webuser](https://smpl.is.tue.mpg.de) optional
-
 - other packages listed in `requirements.txt`
 
 ### necessary files

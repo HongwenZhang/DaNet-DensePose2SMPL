@@ -1,3 +1,4 @@
+# This script is borrowed and extended from https://github.com/nkolot/SPIN/blob/master/datasets/base_dataset.py
 from __future__ import division
 
 import torch

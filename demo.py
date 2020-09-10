@@ -24,7 +24,6 @@ import numpy as np
 import torch
 import torchvision
 from torchvision.utils import make_grid
-import torch.nn as nn
 
 from models import SMPL
 from models.core.config import cfg, cfg_from_file

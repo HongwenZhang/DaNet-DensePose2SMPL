@@ -1,4 +1,5 @@
 """
+# This script is borrowed and extended from https://github.com/nkolot/SPIN/blob/master/eval.py
 This script can be used to evaluate a trained model on 3D pose/shape and masks/part segmentation. You first need to download the datasets and preprocess them.
 Example usage:
 ```

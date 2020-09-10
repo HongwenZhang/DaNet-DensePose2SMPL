@@ -1,4 +1,5 @@
 """
+# This script is borrowed and extended from https://github.com/nkolot/SPIN/blob/master/config.py
 This file contains definitions of useful data stuctures and the paths
 for the datasets and data files necessary to run the code.
 Things you need to change: *_ROOT that indicate the path to each dataset
