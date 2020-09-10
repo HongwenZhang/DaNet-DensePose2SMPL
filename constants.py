@@ -1,3 +1,4 @@
+# This script is borrowed and extended from https://github.com/nkolot/SPIN/blob/master/constants.py
 FOCAL_LENGTH = 5000.
 IMG_RES = 224
 
