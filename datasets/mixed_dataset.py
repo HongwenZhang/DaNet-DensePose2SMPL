@@ -45,10 +45,23 @@ class MixedDataset(torch.utils.data.Dataset):
         self.partition = np.array(self.partition).cumsum()
 
     def __getitem__(self, index):
+        """
+        Return item from the item.
+
+        Args:
+            self: (todo): write your description
+            index: (int): write your description
+        """
         p = np.random.rand()
         for i in range(6):
             if p <= self.partition[i]:
                 return self.datasets[i][index % len(self.datasets[i])]
 
     def __len__(self):
+        """
+        Returns the length of the queue.
+
+        Args:
+            self: (todo): write your description
+        """
         return self.length

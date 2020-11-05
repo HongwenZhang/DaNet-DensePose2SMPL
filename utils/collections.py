@@ -26,10 +26,23 @@ class AttrDict(dict):
     IMMUTABLE = '__immutable__'
 
     def __init__(self, *args, **kwargs):
+        """
+        Initialize an attribute.
+
+        Args:
+            self: (todo): write your description
+        """
         super(AttrDict, self).__init__(*args, **kwargs)
         self.__dict__[AttrDict.IMMUTABLE] = False
 
     def __getattr__(self, name):
+        """
+        Return the value from the given name.
+
+        Args:
+            self: (todo): write your description
+            name: (str): write your description
+        """
         if name in self.__dict__:
             return self.__dict__[name]
         elif name in self:
@@ -38,6 +51,14 @@ class AttrDict(dict):
             raise AttributeError(name)
 
     def __setattr__(self, name, value):
+        """
+        Sets an attribute.
+
+        Args:
+            self: (todo): write your description
+            name: (str): write your description
+            value: (todo): write your description
+        """
         if not self.__dict__[AttrDict.IMMUTABLE]:
             if name in self.__dict__:
                 self.__dict__[name] = value
@@ -63,4 +84,10 @@ class AttrDict(dict):
                 v.immutable(is_immutable)
 
     def is_immutable(self):
+        """
+        Determine if this is an instance of the dictionary.
+
+        Args:
+            self: (todo): write your description
+        """
         return self.__dict__[AttrDict.IMMUTABLE]

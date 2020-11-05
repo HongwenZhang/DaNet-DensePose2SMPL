@@ -175,6 +175,13 @@ def run_evaluation(model, dataset, result_file,
 
 # markdown format output
 def _print_name_value(name_value, full_arch_name):
+    """
+    Prints a name table.
+
+    Args:
+        name_value: (str): write your description
+        full_arch_name: (str): write your description
+    """
     names = name_value.keys()
     values = name_value.values()
     num_values = len(name_value)

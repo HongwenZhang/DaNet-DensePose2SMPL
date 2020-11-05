@@ -103,6 +103,13 @@ def _CorrectMomentum(optimizer, param_keys, correction):
 
 
 def _get_lr_change_ratio(cur_lr, new_lr):
+    """
+    Calculate ratio of the ratio
+
+    Args:
+        cur_lr: (str): write your description
+        new_lr: (todo): write your description
+    """
     eps = 1e-10
     ratio = np.max(
         (new_lr / np.max((cur_lr, eps)), cur_lr / np.max((new_lr, eps)))
@@ -111,6 +118,14 @@ def _get_lr_change_ratio(cur_lr, new_lr):
 
 
 def affine_grid_gen(rois, input_size, grid_size):
+    """
+    Generate genine image
+
+    Args:
+        rois: (todo): write your description
+        input_size: (int): write your description
+        grid_size: (int): write your description
+    """
 
     rois = rois.detach()
     x1 = rois[:, 1::4] / 16.0

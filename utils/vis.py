@@ -52,6 +52,12 @@ _WHITE = (255, 255, 255)
 
 
 def kp_connections(keypoints):
+    """
+    Return kp pairs of kp_lines
+
+    Args:
+        keypoints: (array): write your description
+    """
     kp_lines = [
         [keypoints.index('left_eye'), keypoints.index('right_eye')],
         [keypoints.index('left_eye'), keypoints.index('nose')],
@@ -105,6 +111,14 @@ def vis_bbox_opencv(img, bbox, thick=1):
 
 
 def get_class_string(class_index, score, dataset):
+    """
+    Return the class string.
+
+    Args:
+        class_index: (str): write your description
+        score: (str): write your description
+        dataset: (str): write your description
+    """
     class_text = dataset.classes[class_index] if dataset is not None else \
         'id{:d}'.format(class_index)
     return class_text + ' {:0.2f}'.format(score).lstrip('0')
@@ -407,6 +421,15 @@ def vis_batch_image_with_joints(batch_image, batch_joints, batch_joints_vis,
 
 
 def vis_img_3Djoint(batch_img, joints, pairs=None, joint_group=None):
+    """
+    Plot 2djoints.
+
+    Args:
+        batch_img: (todo): write your description
+        joints: (array): write your description
+        pairs: (str): write your description
+        joint_group: (todo): write your description
+    """
     n_sample = joints.shape[0]
     max_show = 2
     if n_sample > max_show:
@@ -419,6 +442,12 @@ def vis_img_3Djoint(batch_img, joints, pairs=None, joint_group=None):
     # color = ['g', 'b', 'r']
 
     def m_l_r(idx):
+        """
+        Returns : class : r_l_group.
+
+        Args:
+            idx: (int): write your description
+        """
 
         if joint_group is None:
             return 1
@@ -465,6 +494,15 @@ def vis_img_3Djoint(batch_img, joints, pairs=None, joint_group=None):
 
 
 def vis_img_2Djoint(batch_img, joints, pairs=None, joint_group=None):
+    """
+    Plot 2d images in 2djoints.
+
+    Args:
+        batch_img: (todo): write your description
+        joints: (array): write your description
+        pairs: (todo): write your description
+        joint_group: (todo): write your description
+    """
     n_sample = joints.shape[0]
     max_show = 2
     if n_sample > max_show:
@@ -477,6 +515,12 @@ def vis_img_2Djoint(batch_img, joints, pairs=None, joint_group=None):
     # color = ['g', 'b', 'r']
 
     def m_l_r(idx):
+        """
+        Returns : class : r_l_group.
+
+        Args:
+            idx: (int): write your description
+        """
 
         if joint_group is None:
             return 1
@@ -554,6 +598,20 @@ def set_axes_equal(ax):
 
 
 def vis_smpl_iuv(image, cam_pred, vert_pred, face, pred_uv, vert_errors_batch, image_name, save_path, opt):
+    """
+    Visitor for an image.
+
+    Args:
+        image: (array): write your description
+        cam_pred: (str): write your description
+        vert_pred: (bool): write your description
+        face: (todo): write your description
+        pred_uv: (todo): write your description
+        vert_errors_batch: (todo): write your description
+        image_name: (str): write your description
+        save_path: (str): write your description
+        opt: (todo): write your description
+    """
 
     # save_path = os.path.join('./notebooks/output/demo_results-wild', ids[f_id][0])
     if not os.path.exists(save_path):

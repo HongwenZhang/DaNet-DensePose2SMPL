@@ -15,6 +15,19 @@ logger = logging.getLogger(__name__)
 class HighResolutionModule(nn.Module):
     def __init__(self, num_branches, blocks, num_blocks, num_inchannels,
                  num_channels, fuse_method, multi_scale_output=True):
+        """
+        Initialize the layer.
+
+        Args:
+            self: (todo): write your description
+            num_branches: (int): write your description
+            blocks: (todo): write your description
+            num_blocks: (int): write your description
+            num_inchannels: (int): write your description
+            num_channels: (int): write your description
+            fuse_method: (str): write your description
+            multi_scale_output: (bool): write your description
+        """
         super(HighResolutionModule, self).__init__()
         self._check_branches(
             num_branches, blocks, num_blocks, num_inchannels, num_channels)
@@ -32,6 +45,17 @@ class HighResolutionModule(nn.Module):
 
     def _check_branches(self, num_branches, blocks, num_blocks,
                         num_inchannels, num_channels):
+        """
+        Check that all branches.
+
+        Args:
+            self: (todo): write your description
+            num_branches: (int): write your description
+            blocks: (todo): write your description
+            num_blocks: (int): write your description
+            num_inchannels: (int): write your description
+            num_channels: (int): write your description
+        """
         if num_branches != len(num_blocks):
             error_msg = 'NUM_BRANCHES({}) <> NUM_BLOCKS({})'.format(
                 num_branches, len(num_blocks))
@@ -52,6 +76,17 @@ class HighResolutionModule(nn.Module):
 
     def _make_one_branch(self, branch_index, block, num_blocks, num_channels,
                          stride=1):
+        """
+        Generate a single branch.
+
+        Args:
+            self: (todo): write your description
+            branch_index: (todo): write your description
+            block: (todo): write your description
+            num_blocks: (int): write your description
+            num_channels: (int): write your description
+            stride: (int): write your description
+        """
         downsample = None
         if stride != 1 or \
            self.num_inchannels[branch_index] != num_channels[branch_index] * block.expansion:
@@ -89,6 +124,16 @@ class HighResolutionModule(nn.Module):
         return nn.Sequential(*layers)
 
     def _make_branches(self, num_branches, block, num_blocks, num_channels):
+        """
+        Generate a list of the branches.
+
+        Args:
+            self: (todo): write your description
+            num_branches: (int): write your description
+            block: (todo): write your description
+            num_blocks: (int): write your description
+            num_channels: (int): write your description
+        """
         branches = []
 
         for i in range(num_branches):
@@ -99,6 +144,12 @@ class HighResolutionModule(nn.Module):
         return nn.ModuleList(branches)
 
     def _make_fuse_layers(self):
+        """
+        Make layer layers.
+
+        Args:
+            self: (todo): write your description
+        """
         if self.num_branches == 1:
             return None
 
@@ -156,9 +207,22 @@ class HighResolutionModule(nn.Module):
         return nn.ModuleList(fuse_layers)
 
     def get_num_inchannels(self):
+        """
+        Returns the number of num_inchannels.
+
+        Args:
+            self: (todo): write your description
+        """
         return self.num_inchannels
 
     def forward(self, x):
+        """
+        Evaluate of the network.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+        """
         if self.num_branches == 1:
             return [self.branches[0](x[0])]
 
@@ -188,6 +252,13 @@ blocks_dict = {
 class PoseHighResolutionNet(nn.Module):
 
     def __init__(self, part_out_dim=25):
+        """
+        Initialize layer.
+
+        Args:
+            self: (todo): write your description
+            part_out_dim: (int): write your description
+        """
         self.inplanes = 64
         extra = cfg.HR_MODEL.EXTRA
         super(PoseHighResolutionNet, self).__init__()
@@ -241,6 +312,14 @@ class PoseHighResolutionNet(nn.Module):
 
     def _make_transition_layer(
             self, num_channels_pre_layer, num_channels_cur_layer):
+        """
+        Create the layer layers layer layers.
+
+        Args:
+            self: (todo): write your description
+            num_channels_pre_layer: (int): write your description
+            num_channels_cur_layer: (int): write your description
+        """
         num_branches_cur = len(num_channels_cur_layer)
         num_branches_pre = len(num_channels_pre_layer)
 
@@ -281,6 +360,16 @@ class PoseHighResolutionNet(nn.Module):
         return nn.ModuleList(transition_layers)
 
     def _make_layer(self, block, planes, blocks, stride=1):
+        """
+        Make a layer.
+
+        Args:
+            self: (todo): write your description
+            block: (todo): write your description
+            planes: (todo): write your description
+            blocks: (todo): write your description
+            stride: (int): write your description
+        """
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
@@ -301,6 +390,15 @@ class PoseHighResolutionNet(nn.Module):
 
     def _make_stage(self, layer_config, num_inchannels,
                     multi_scale_output=True):
+        """
+        Create a stage of stage.
+
+        Args:
+            self: (todo): write your description
+            layer_config: (todo): write your description
+            num_inchannels: (int): write your description
+            multi_scale_output: (bool): write your description
+        """
         num_modules = layer_config['NUM_MODULES']
         num_branches = layer_config['NUM_BRANCHES']
         num_blocks = layer_config['NUM_BLOCKS']
@@ -332,6 +430,13 @@ class PoseHighResolutionNet(nn.Module):
         return nn.Sequential(*modules), num_inchannels
 
     def forward(self, x):
+        """
+        Forward computation
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+        """
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -378,6 +483,13 @@ class PoseHighResolutionNet(nn.Module):
         return return_dict
 
     def init_weights(self, pretrained=''):
+        """
+        Initialize weights.
+
+        Args:
+            self: (todo): write your description
+            pretrained: (bool): write your description
+        """
         # logger.info('=> init weights from normal distribution')
         for m in self.modules():
             if isinstance(m, nn.Conv2d):

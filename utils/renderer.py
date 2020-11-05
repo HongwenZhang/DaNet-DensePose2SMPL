@@ -25,6 +25,15 @@ class Renderer:
     Code adapted from https://github.com/vchoutas/smplify-x
     """
     def __init__(self, focal_length=5000, img_res=224, faces=None):
+        """
+        Initialize the image
+
+        Args:
+            self: (todo): write your description
+            focal_length: (int): write your description
+            img_res: (todo): write your description
+            faces: (todo): write your description
+        """
         self.renderer = pyrender.OffscreenRenderer(viewport_width=img_res,
                                        viewport_height=img_res,
                                        point_size=1.0)
@@ -33,6 +42,15 @@ class Renderer:
         self.faces = faces
 
     def visualize_tb(self, vertices, camera_translation, images):
+        """
+        Visualize a 2d
+
+        Args:
+            self: (todo): write your description
+            vertices: (list): write your description
+            camera_translation: (todo): write your description
+            images: (todo): write your description
+        """
         vertices = vertices.cpu().numpy()
         camera_translation = camera_translation.cpu().numpy().copy()
         images = images.cpu()
@@ -46,6 +64,15 @@ class Renderer:
         return rend_imgs
 
     def __call__(self, vertices, camera_translation, image):
+        """
+        Call this camera.
+
+        Args:
+            self: (todo): write your description
+            vertices: (array): write your description
+            camera_translation: (str): write your description
+            image: (array): write your description
+        """
         material = pyrender.MetallicRoughnessMaterial(
             metallicFactor=0.2,
             alphaMode='OPAQUE',
@@ -121,6 +148,14 @@ def rotateZ( points, angle ):
 
 class opendr_render(object):
     def __init__(self, ratio=2, color='white'):
+        """
+        Initialize the ratio.
+
+        Args:
+            self: (todo): write your description
+            ratio: (todo): write your description
+            color: (bool): write your description
+        """
         self.ratio = ratio
         self.color = color
 
@@ -133,6 +168,18 @@ class opendr_render(object):
 
 
     def render(self, image, cam, K, verts, face, draw_id=''):
+        """
+        Render the image
+
+        Args:
+            self: (todo): write your description
+            image: (array): write your description
+            cam: (todo): write your description
+            K: (todo): write your description
+            verts: (str): write your description
+            face: (todo): write your description
+            draw_id: (str): write your description
+        """
 
         # roll_axis = torch.Tensor([1, 0, 0]).unsqueeze(0)  # .expand(1, -1)
         # alpha = torch.Tensor([np.pi] * 1).unsqueeze(1) * 0.5

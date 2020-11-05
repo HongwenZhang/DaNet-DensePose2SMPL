@@ -28,6 +28,17 @@ class BasicBlock(nn.Module):
     expansion = 1
 
     def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1):
+        """
+        Initialize batch.
+
+        Args:
+            self: (todo): write your description
+            inplanes: (todo): write your description
+            planes: (todo): write your description
+            stride: (int): write your description
+            downsample: (todo): write your description
+            groups: (list): write your description
+        """
         super(BasicBlock, self).__init__()
         self.conv1 = conv3x3(inplanes, planes, stride, groups=groups)
         self.bn1 = nn.BatchNorm2d(planes * groups, momentum=BN_MOMENTUM)
@@ -38,6 +49,13 @@ class BasicBlock(nn.Module):
         self.stride = stride
 
     def forward(self, x):
+        """
+        Forward computation.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+        """
         residual = x
 
         out = self.conv1(x)
@@ -60,6 +78,17 @@ class Bottleneck(nn.Module):
     expansion = 4
 
     def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1):
+        """
+        Initialize convolutional layer.
+
+        Args:
+            self: (todo): write your description
+            inplanes: (todo): write your description
+            planes: (todo): write your description
+            stride: (int): write your description
+            downsample: (todo): write your description
+            groups: (list): write your description
+        """
         super(Bottleneck, self).__init__()
         self.conv1 = nn.Conv2d(inplanes * groups, planes * groups, kernel_size=1, bias=False, groups=groups)
         self.bn1 = nn.BatchNorm2d(planes * groups, momentum=BN_MOMENTUM)
@@ -75,6 +104,13 @@ class Bottleneck(nn.Module):
         self.stride = stride
 
     def forward(self, x):
+        """
+        Perform forward computation.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+        """
         residual = x
 
         out = self.conv1(x)
@@ -107,6 +143,13 @@ resnet_spec = {18: (BasicBlock, [2, 2, 2, 2]),
 class PoseResNet(nn.Module):
 
     def __init__(self, part_out_dim=25):
+        """
+        Initialize the network.
+
+        Args:
+            self: (todo): write your description
+            part_out_dim: (int): write your description
+        """
         self.inplanes = 64
         extra = cfg.MSRES_MODEL.EXTRA
         # extra = EasyDict(cfg.MSRES_MODEL.EXTRA)
@@ -137,6 +180,16 @@ class PoseResNet(nn.Module):
 
 
     def _make_layer(self, block, planes, blocks, stride=1):
+        """
+        Make a layer.
+
+        Args:
+            self: (todo): write your description
+            block: (todo): write your description
+            planes: (todo): write your description
+            blocks: (todo): write your description
+            stride: (int): write your description
+        """
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
@@ -154,6 +207,14 @@ class PoseResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def _get_deconv_cfg(self, deconv_kernel, index):
+        """
+        Get deconv_cfg.
+
+        Args:
+            self: (todo): write your description
+            deconv_kernel: (str): write your description
+            index: (int): write your description
+        """
         if deconv_kernel == 4:
             padding = 1
             output_padding = 0
@@ -167,6 +228,15 @@ class PoseResNet(nn.Module):
         return deconv_kernel, padding, output_padding
 
     def _make_deconv_layer(self, num_layers, num_filters, num_kernels):
+        """
+        Make a deconv layer.
+
+        Args:
+            self: (todo): write your description
+            num_layers: (int): write your description
+            num_filters: (int): write your description
+            num_kernels: (int): write your description
+        """
         assert num_layers == len(num_filters), \
             'ERROR: num_deconv_layers is different len(num_deconv_filters)'
         assert num_layers == len(num_kernels), \
@@ -194,6 +264,13 @@ class PoseResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
+        """
+        Forward computation. forward.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+        """
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -224,6 +301,13 @@ class PoseResNet(nn.Module):
 
 
     def init_weights(self, pretrained=''):
+        """
+        Initialize weights.
+
+        Args:
+            self: (todo): write your description
+            pretrained: (bool): write your description
+        """
         # if os.path.isfile(pretrained):
         logger.info('=> init deconv weights from normal distribution')
         for name, m in self.deconv_layers.named_modules():
@@ -280,6 +364,15 @@ class PoseResNet(nn.Module):
 
 class IUV_predict_layer(nn.Module):
     def __init__(self, feat_dim=256, final_cov_k=3, part_out_dim=25):
+        """
+        Initialize the network.
+
+        Args:
+            self: (todo): write your description
+            feat_dim: (int): write your description
+            final_cov_k: (str): write your description
+            part_out_dim: (int): write your description
+        """
         super(IUV_predict_layer, self).__init__()
 
         self.predict_u = nn.Conv2d(
@@ -356,6 +449,16 @@ class IUV_predict_layer(nn.Module):
                 )
 
     def _make_layer(self, block, planes, blocks, stride=1):
+        """
+        Make a layer.
+
+        Args:
+            self: (todo): write your description
+            block: (todo): write your description
+            planes: (todo): write your description
+            blocks: (todo): write your description
+            stride: (int): write your description
+        """
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
@@ -373,6 +476,13 @@ class IUV_predict_layer(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
+        """
+        Forward computation.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+        """
         return_dict = {}
         predict_u = self.predict_u(x)
         predict_v = self.predict_v(x)
@@ -393,6 +503,18 @@ class IUV_predict_layer(nn.Module):
 class SmplResNet(nn.Module):
 
     def __init__(self, resnet_nums, in_channels=3, num_classes=229, last_stride=2, n_extra_feat=0, truncate=0, **kwargs):
+        """
+        Initialize the network.
+
+        Args:
+            self: (todo): write your description
+            resnet_nums: (int): write your description
+            in_channels: (int): write your description
+            num_classes: (int): write your description
+            last_stride: (str): write your description
+            n_extra_feat: (str): write your description
+            truncate: (todo): write your description
+        """
         super(SmplResNet, self).__init__()
 
         self.inplanes = 64
@@ -425,6 +547,16 @@ class SmplResNet(nn.Module):
                                             nn.ReLU(True))
 
     def _make_layer(self, block, planes, blocks, stride=1):
+        """
+        Make a layer.
+
+        Args:
+            self: (todo): write your description
+            block: (todo): write your description
+            planes: (todo): write your description
+            blocks: (todo): write your description
+            stride: (int): write your description
+        """
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
@@ -442,6 +574,14 @@ class SmplResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x, infeat=None):
+        """
+        Forward computation.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+            infeat: (todo): write your description
+        """
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -464,6 +604,13 @@ class SmplResNet(nn.Module):
         return cls, {'x4': x4}
 
     def init_weights(self, pretrained=''):
+        """
+        Initialize weights. weights
+
+        Args:
+            self: (todo): write your description
+            pretrained: (bool): write your description
+        """
         if os.path.isfile(pretrained):
             logger.info('=> loading pretrained model {}'.format(pretrained))
             # self.load_state_dict(pretrained_state_dict, strict=False)
@@ -500,6 +647,16 @@ class SmplResNet(nn.Module):
 class LimbResLayers(nn.Module):
 
     def __init__(self, resnet_nums, inplanes, outplanes=None, groups=1, **kwargs):
+        """
+        Initialize network layers.
+
+        Args:
+            self: (todo): write your description
+            resnet_nums: (int): write your description
+            inplanes: (todo): write your description
+            outplanes: (int): write your description
+            groups: (list): write your description
+        """
         super(LimbResLayers, self).__init__()
 
         self.inplanes = inplanes
@@ -512,6 +669,17 @@ class LimbResLayers(nn.Module):
 
 
     def _make_layer(self, block, planes, blocks, stride=1, groups=1):
+        """
+        Generate a layer.
+
+        Args:
+            self: (todo): write your description
+            block: (todo): write your description
+            planes: (todo): write your description
+            blocks: (todo): write your description
+            stride: (int): write your description
+            groups: (int): write your description
+        """
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
@@ -529,6 +697,13 @@ class LimbResLayers(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
+        """
+        Perform layer.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+        """
         x = self.layer4(x)
         x = self.avg_pooling(x)
 

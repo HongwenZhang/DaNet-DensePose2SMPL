@@ -12,6 +12,12 @@ logger = logging.getLogger(__name__)
 class TrainOptions():
 
     def __init__(self):
+        """
+        Initialize the command line arguments.
+
+        Args:
+            self: (todo): write your description
+        """
         self.parser = argparse.ArgumentParser()
 
         req = self.parser.add_argument_group('Required')

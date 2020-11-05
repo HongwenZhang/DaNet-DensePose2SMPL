@@ -12,6 +12,18 @@ from utils.graph import normalize_undigraph
 class GraphConv(nn.Module):
     def __init__(self, input_dim, output_dim, add_self=False, normalize_embedding=False,
             dropout=0.0, bias=True):
+        """
+        Initialize the layer.
+
+        Args:
+            self: (todo): write your description
+            input_dim: (int): write your description
+            output_dim: (int): write your description
+            add_self: (todo): write your description
+            normalize_embedding: (bool): write your description
+            dropout: (str): write your description
+            bias: (float): write your description
+        """
         super(GraphConv, self).__init__()
         self.add_self = add_self
         self.dropout = dropout
@@ -27,6 +39,14 @@ class GraphConv(nn.Module):
             self.bias = None
 
     def forward(self, x, adj):
+        """
+        Forward computation.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+            adj: (todo): write your description
+        """
         if self.dropout > 0.001:
             x = self.dropout_layer(x)
         y = torch.matmul(adj, x)
@@ -44,6 +64,25 @@ class GraphConv(nn.Module):
 class GCN(nn.Module):
 
     def __init__(self, input_dim, hidden_dim, out_dim, num_layers, num_nodes, bn=True, normalize=False, learn_edge=False, edge_init=1, edge_act_fun=F.relu, dropout=0):
+        """
+        Initialize the graph.
+
+        Args:
+            self: (todo): write your description
+            input_dim: (int): write your description
+            hidden_dim: (int): write your description
+            out_dim: (int): write your description
+            num_layers: (int): write your description
+            num_nodes: (int): write your description
+            bn: (int): write your description
+            normalize: (bool): write your description
+            learn_edge: (int): write your description
+            edge_init: (str): write your description
+            edge_act_fun: (todo): write your description
+            F: (int): write your description
+            relu: (todo): write your description
+            dropout: (str): write your description
+        """
         super(GCN, self).__init__()
 
         self.num_layers = num_layers
@@ -81,6 +120,14 @@ class GCN(nn.Module):
                     m.bias.data = nn.init.constant_(m.bias.data, 0.0)
 
     def forward(self, x, A):
+        """
+        Forward computation. forward.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+            A: (todo): write your description
+        """
 
         hidden = x
         for i in range(self.num_layers):

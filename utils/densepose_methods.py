@@ -14,6 +14,12 @@ import os
 
 class DensePoseMethods:
     def __init__(self):
+        """
+        Initialize angle matrices.
+
+        Args:
+            self: (todo): write your description
+        """
         #
         ALP_UV = loadmat(os.path.join('./data/UV_data', 'UV_Processed.mat'))
         self.FaceIndices = np.array(ALP_UV['All_FaceIndices']).squeeze()
@@ -29,6 +35,18 @@ class DensePoseMethods:
         self.UV_symmetry_transformations = loadmat(UV_symmetry_filename)
 
     def get_symmetric_densepose(self, I, U, V, x, y, Mask):
+        """
+        Get symmetric symmetric symmetric symmetric matrix.
+
+        Args:
+            self: (todo): write your description
+            I: (todo): write your description
+            U: (todo): write your description
+            V: (todo): write your description
+            x: (todo): write your description
+            y: (todo): write your description
+            Mask: (todo): write your description
+        """
         ### This is a function to get the mirror symmetric UV labels.
         Labels_sym = np.zeros(I.shape)
         U_sym = np.zeros(U.shape)
@@ -58,6 +76,16 @@ class DensePoseMethods:
         return Labels_sym, U_sym, V_sym, x_sym, y_sym, Mask_flipped
 
     def barycentric_coordinates_exists(self, P0, P1, P2, P):
+        """
+        Determine if the sum of the convex coordinates.
+
+        Args:
+            self: (todo): write your description
+            P0: (todo): write your description
+            P1: (todo): write your description
+            P2: (todo): write your description
+            P: (todo): write your description
+        """
         u = P1 - P0
         v = P2 - P0
         w = P - P0
@@ -80,6 +108,16 @@ class DensePoseMethods:
         return ((r <= 1) & (t <= 1) & (r + t <= 1))
 
     def barycentric_coordinates(self, P0, P1, P2, P):
+        """
+        Returns the coordinates of the convexcentric coordinates of the convex hull.
+
+        Args:
+            self: (todo): write your description
+            P0: (todo): write your description
+            P1: (todo): write your description
+            P2: (todo): write your description
+            P: (todo): write your description
+        """
         u = P1 - P0
         v = P2 - P0
         w = P - P0
@@ -97,6 +135,15 @@ class DensePoseMethods:
         return (1 - (r + t), r, t)
 
     def IUV2FBC(self, I_point, U_point, V_point):
+        """
+        Computes the i - th phase p - 1 p and p_point p_point.
+
+        Args:
+            self: (todo): write your description
+            I_point: (int): write your description
+            U_point: (int): write your description
+            V_point: (int): write your description
+        """
         P = [U_point, V_point, 0]
         FaceIndicesNow = np.where(self.FaceIndices == I_point)
         FacesNow = self.FacesDensePose[FaceIndicesNow]
@@ -132,6 +179,17 @@ class DensePoseMethods:
             return (FaceIndicesNow[0][np.argmin(D3)], 0., 0., 1.)
 
     def FBC2PointOnSurface(self, FaceIndex, bc1, bc2, bc3, Vertices):
+        """
+        Convert a set of vertices of 2d points.
+
+        Args:
+            self: (todo): write your description
+            FaceIndex: (int): write your description
+            bc1: (array): write your description
+            bc2: (array): write your description
+            bc3: (array): write your description
+            Vertices: (array): write your description
+        """
         ##
         Vert_indices = self.All_vertices[self.FacesDensePose[FaceIndex]] - 1
         ##

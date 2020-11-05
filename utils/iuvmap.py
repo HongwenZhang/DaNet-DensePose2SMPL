@@ -4,6 +4,15 @@ import torch.nn.functional as F
 
 
 def iuvmap_clean(U_uv, V_uv, Index_UV, AnnIndex=None):
+    """
+    Removes the iuv.
+
+    Args:
+        U_uv: (array): write your description
+        V_uv: (array): write your description
+        Index_UV: (int): write your description
+        AnnIndex: (todo): write your description
+    """
 
     Index_UV_max = torch.argmax(Index_UV, dim=1).float()
     recon_Index_UV = []
@@ -39,6 +48,17 @@ def iuvmap_clean(U_uv, V_uv, Index_UV, AnnIndex=None):
 
 
 def iuv_map2img(U_uv, V_uv, Index_UV, AnnIndex=None, uv_rois=None, ind_mapping=None):
+    """
+    Convert an image to an image
+
+    Args:
+        U_uv: (todo): write your description
+        V_uv: (todo): write your description
+        Index_UV: (int): write your description
+        AnnIndex: (int): write your description
+        uv_rois: (todo): write your description
+        ind_mapping: (todo): write your description
+    """
     device_id = U_uv.get_device()
     batch_size = U_uv.size(0)
     K = U_uv.size(1)
@@ -101,6 +121,14 @@ def iuv_map2img(U_uv, V_uv, Index_UV, AnnIndex=None, uv_rois=None, ind_mapping=N
 
 
 def iuv_img2map(uvimages, uv_rois=None, new_size=None):
+    """
+    Convert an image to 4d image.
+
+    Args:
+        uvimages: (todo): write your description
+        uv_rois: (todo): write your description
+        new_size: (int): write your description
+    """
     device_id = uvimages.get_device()
     batch_size = uvimages.size(0)
     uvimg_size = uvimages.size(-1)

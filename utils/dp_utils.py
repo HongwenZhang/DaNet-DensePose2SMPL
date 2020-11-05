@@ -10,6 +10,17 @@ import utils.densepose_methods as dp_methods
 DP = dp_methods.DensePoseMethods()
 
 def dp_annot_process(ann, heatmap_size, crop_res, center, scale, IsFlipped):
+    """
+    Process a set of the annotations.
+
+    Args:
+        ann: (todo): write your description
+        heatmap_size: (int): write your description
+        crop_res: (todo): write your description
+        center: (float): write your description
+        scale: (float): write your description
+        IsFlipped: (todo): write your description
+    """
     bb_xywh = np.array(ann['bbox'])
 
     bbox_gt = [bb_xywh[0], bb_xywh[1], bb_xywh[0] + bb_xywh[2], bb_xywh[1] + bb_xywh[3]]

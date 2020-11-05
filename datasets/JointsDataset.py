@@ -25,6 +25,17 @@ logger = logging.getLogger(__name__)
 
 class JointsDataset(BaseDataset):
     def __init__(self, options, dataset, subset, use_augmentation, is_train=True):
+        """
+        Initialize the dataset.
+
+        Args:
+            self: (todo): write your description
+            options: (dict): write your description
+            dataset: (todo): write your description
+            subset: (todo): write your description
+            use_augmentation: (bool): write your description
+            is_train: (bool): write your description
+        """
         super().__init__(options, dataset, use_augmentation=use_augmentation, is_train=is_train)
         self.num_joints = 0
         self.pixel_std = 200
@@ -39,15 +50,36 @@ class JointsDataset(BaseDataset):
         self.data_format = 'jpg'
 
     def _get_db(self):
+        """
+        Get the database.
+
+        Args:
+            self: (todo): write your description
+        """
         raise NotImplementedError
 
     def evaluate(self, preds, output_dir, *args, **kwargs):
+        """
+        Evaluate the model.
+
+        Args:
+            self: (todo): write your description
+            preds: (array): write your description
+            output_dir: (str): write your description
+        """
         raise NotImplementedError
 
     # def __len__(self,):
     #     return len(self.db)
 
     def select_data(self, db):
+        """
+        Selects the selected by the db.
+
+        Args:
+            self: (todo): write your description
+            db: (array): write your description
+        """
         db_selected = []
         for rec in db:
             num_vis = 0

@@ -47,6 +47,15 @@ def fliplr_joints(joints, joints_vis, width, matched_parts):
 
 
 def transform_preds(coords, center, scale, output_size):
+    """
+    Transform target coordinates of a new coordinates.
+
+    Args:
+        coords: (array): write your description
+        center: (float): write your description
+        scale: (float): write your description
+        output_size: (int): write your description
+    """
     target_coords = np.zeros(coords.shape)
     trans = get_affine_transform(center, scale, 0, output_size, inv=1)
     for p in range(coords.shape[0]):
@@ -58,6 +67,22 @@ def get_affine_transform(
         center, scale, rot, output_size,
         shift=np.array([0, 0], dtype=np.float32), inv=0
 ):
+    """
+    Get affine transform
+
+    Args:
+        center: (str): write your description
+        scale: (float): write your description
+        rot: (str): write your description
+        output_size: (int): write your description
+        shift: (str): write your description
+        np: (todo): write your description
+        array: (array): write your description
+        dtype: (str): write your description
+        np: (todo): write your description
+        float32: (str): write your description
+        inv: (str): write your description
+    """
     if not isinstance(scale, np.ndarray) and not isinstance(scale, list):
         # print(scale)
         scale = np.array([scale, scale])
@@ -90,17 +115,38 @@ def get_affine_transform(
 
 
 def affine_transform(pt, t):
+    """
+    Affine a transformation.
+
+    Args:
+        pt: (array): write your description
+        t: (array): write your description
+    """
     new_pt = np.array([pt[0], pt[1], 1.]).T
     new_pt = np.dot(t, new_pt)
     return new_pt[:2]
 
 
 def get_3rd_point(a, b):
+    """
+    Get the coordinates of a and b
+
+    Args:
+        a: (str): write your description
+        b: (str): write your description
+    """
     direct = a - b
     return b + np.array([-direct[1], direct[0]], dtype=np.float32)
 
 
 def get_dir(src_point, rot_rad):
+    """
+    Calculate direction in radians.
+
+    Args:
+        src_point: (str): write your description
+        rot_rad: (str): write your description
+    """
     sn, cs = np.sin(rot_rad), np.cos(rot_rad)
 
     src_result = [0, 0]
@@ -111,6 +157,16 @@ def get_dir(src_point, rot_rad):
 
 
 def crop(img, center, scale, output_size, rot=0):
+    """
+    Crop an image
+
+    Args:
+        img: (array): write your description
+        center: (float): write your description
+        scale: (float): write your description
+        output_size: (int): write your description
+        rot: (todo): write your description
+    """
     trans = get_affine_transform(center, scale, rot, output_size)
 
     dst_img = cv2.warpAffine(

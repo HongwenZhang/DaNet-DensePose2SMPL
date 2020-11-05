@@ -7,6 +7,14 @@ import numpy as np
 import utils.segms as segm_utils
 
 def db_coco_extract(dataset_path, subset, out_path):
+    """
+    Extract coco coco.
+
+    Args:
+        dataset_path: (str): write your description
+        subset: (todo): write your description
+        out_path: (str): write your description
+    """
 
     # convert joints to global order
     joints_idx = [19, 20, 21, 22, 23, 9, 8, 10, 7, 11, 6, 3, 2, 4, 1, 5, 0]
@@ -101,6 +109,12 @@ def db_coco_extract(dataset_path, subset, out_path):
 
 
 def kp_coco2smpl(kps_coco):
+    """
+    Calculate kp_coco2sm kp_coco
+
+    Args:
+        kps_coco: (todo): write your description
+    """
     smpl2coco = [[1,  2,  4,  5,  7,  8,  16, 17, 18, 19, 20, 21],
                  [11, 12, 13, 14, 15, 16, 5,  6,  7,  8,  9,  10]]
 
