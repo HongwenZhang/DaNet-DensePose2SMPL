@@ -12,8 +12,20 @@ from .smpl_regressor import SMPL_Regressor
 
 
 def check_inference(net_func):
+    """
+    Decorator to check if the wrapped wrapped.
+
+    Args:
+        net_func: (todo): write your description
+    """
     @wraps(net_func)
     def wrapper(self, *args, **kwargs):
+        """
+        Decorator to wrap a function.
+
+        Args:
+            self: (todo): write your description
+        """
         if not self.training:
             if cfg.PYTORCH_VERSION_LESS_THAN_040:
                 return net_func(self, *args, **kwargs)
@@ -34,6 +46,14 @@ class DaNet(nn.Module):
     H. Zhang et al. Learning 3D Human Shape and Pose from Dense Body Parts
     '''
     def __init__(self, options, smpl_mean_params):
+        """
+        Initialize all the mean of - step.
+
+        Args:
+            self: (todo): write your description
+            options: (dict): write your description
+            smpl_mean_params: (dict): write your description
+        """
         super(DaNet, self).__init__()
 
         self.options = options
@@ -128,6 +148,13 @@ class DaNet(nn.Module):
         return return_dict
 
     def forward(self, in_dict):
+        """
+        Forward forward forward forward
+
+        Args:
+            self: (todo): write your description
+            in_dict: (dict): write your description
+        """
         if cfg.PYTORCH_VERSION_LESS_THAN_040:
             return self._forward(in_dict)
         else:
@@ -135,6 +162,13 @@ class DaNet(nn.Module):
                 return self._forward(in_dict)
 
     def _forward(self, in_dict):
+        """
+        Forward the forward_dict
+
+        Args:
+            self: (todo): write your description
+            in_dict: (dict): write your description
+        """
 
         if type(in_dict) is not dict:
             in_dict = {'img': in_dict, 'pretrain_mode': False, 'vis_on': False, 'dataset_name': ''}
@@ -370,6 +404,12 @@ class DaNet(nn.Module):
 
     # @property
     def detectron_weight_mapping(self):
+        """
+        Detects the weightronronronronron rule.
+
+        Args:
+            self: (todo): write your description
+        """
         if self.mapping_to_detectron is None:
             d_wmap = {}  # detectron_weight_mapping
             d_orphan = []  # detectron orphan weight list

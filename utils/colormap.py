@@ -24,6 +24,12 @@ import numpy as np
 
 
 def colormap(rgb=False):
+    """
+    Return a list of the rgb rgb values.
+
+    Args:
+        rgb: (todo): write your description
+    """
     color_list = np.array(
         [
             0.000, 0.447, 0.741,

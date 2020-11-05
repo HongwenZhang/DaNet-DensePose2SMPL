@@ -32,6 +32,12 @@ import pycocotools.mask as mask_util
 
 
 def GetDensePoseMask(Polys):
+    """
+    Return a 2dense polys from a 2dense values.
+
+    Args:
+        Polys: (todo): write your description
+    """
   MaskGen = np.zeros([256, 256])
   for i in range(1, 15):
     if (Polys[i - 1]):
@@ -44,11 +50,26 @@ def flip_segms(segms, height, width):
   """Left/right flip each mask in a list of masks."""
 
   def _flip_poly(poly, width):
+      """
+      Flip a polynomial.
+
+      Args:
+          poly: (list): write your description
+          width: (int): write your description
+      """
     flipped_poly = np.array(poly)
     flipped_poly[0::2] = width - np.array(poly[0::2]) - 1
     return flipped_poly.tolist()
 
   def _flip_rle(rle, height, width):
+      """
+      Flip rle array.
+
+      Args:
+          rle: (str): write your description
+          height: (int): write your description
+          width: (int): write your description
+      """
     if 'counts' in rle and type(rle['counts']) == list:
       # Magic RLE format handling painfully discovered by looking at the
       # COCO API showAnns function.
@@ -262,6 +283,12 @@ def rle_masks_to_boxes(masks):
   ]
 
   def get_bounds(flat_mask):
+      """
+      Return the min / max_mask.
+
+      Args:
+          flat_mask: (str): write your description
+      """
     inds = np.where(flat_mask > 0)[0]
     return inds.min(), inds.max()
 

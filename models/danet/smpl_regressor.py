@@ -21,8 +21,20 @@ import path_config
 
 
 def check_inference(net_func):
+    """
+    Decorator to check if the wrapped wrapped.
+
+    Args:
+        net_func: (todo): write your description
+    """
     @wraps(net_func)
     def wrapper(self, *args, **kwargs):
+        """
+        Decorator to wrap a function.
+
+        Args:
+            self: (todo): write your description
+        """
         if not self.training:
             if cfg.PYTORCH_VERSION_LESS_THAN_040:
                 return net_func(self, *args, **kwargs)
@@ -38,6 +50,17 @@ def check_inference(net_func):
 
 class SMPL_Regressor(nn.Module):
     def __init__(self, options, as_renderer_only=False, orig_size=224, feat_in_dim=None, smpl_mean_params=None):
+        """
+        Initialize the class
+
+        Args:
+            self: (todo): write your description
+            options: (dict): write your description
+            as_renderer_only: (bool): write your description
+            orig_size: (int): write your description
+            feat_in_dim: (int): write your description
+            smpl_mean_params: (dict): write your description
+        """
         super(SMPL_Regressor, self).__init__()
 
         self.mapping_to_detectron = None
@@ -131,6 +154,13 @@ class SMPL_Regressor(nn.Module):
         return return_dict
 
     def forward(self, in_dict):
+        """
+        Forward forward forward forward
+
+        Args:
+            self: (todo): write your description
+            in_dict: (dict): write your description
+        """
         if cfg.PYTORCH_VERSION_LESS_THAN_040:
             return self._forward(in_dict)
         else:
@@ -138,6 +168,13 @@ class SMPL_Regressor(nn.Module):
                 return self._forward(in_dict)
 
     def _forward(self, in_dict):
+        """
+        Returns a dictionary for a dictionary.
+
+        Args:
+            self: (todo): write your description
+            in_dict: (dict): write your description
+        """
         iuv_map = in_dict['iuv_map']
         part_iuv_map = in_dict['part_iuv_map'] if 'part_iuv_map' in in_dict else None
         target = in_dict['target'] if 'target' in in_dict else None
@@ -251,6 +288,15 @@ class SMPL_Regressor(nn.Module):
         return return_dict
 
     def smpl_para_losses(self, pred, target, has_smpl):
+        """
+        R compute the sum of the loss.
+
+        Args:
+            self: (todo): write your description
+            pred: (todo): write your description
+            target: (todo): write your description
+            has_smpl: (todo): write your description
+        """
 
         if torch.sum(has_smpl) > 0:
             para_loss = F.l1_loss(pred[has_smpl==1], target[has_smpl==1])
@@ -261,6 +307,13 @@ class SMPL_Regressor(nn.Module):
         return para_loss
 
     def orthogonal_loss(self, para):
+        """
+        Return orthogonal orthogonal orthogonal tensor.
+
+        Args:
+            self: (todo): write your description
+            para: (todo): write your description
+        """
         device_id = para.get_device()
         Rs_pred = para[:, 13:].contiguous().view(-1, 3, 3)
         Rs_pred_transposed = torch.transpose(Rs_pred, 1, 2)
@@ -269,11 +322,36 @@ class SMPL_Regressor(nn.Module):
         return F.mse_loss(Rs_mm, tensor_eyes)
 
     def projection_losses(self, para, target_kps, target_kps_vis=None, target_kps3d=None, has_kp3d=None, target_verts=None, cam_gt=None, cam_t_gt=None, shape_gt=None, pose_gt=None):
+        """
+        Projection loss loss.
+
+        Args:
+            self: (todo): write your description
+            para: (todo): write your description
+            target_kps: (todo): write your description
+            target_kps_vis: (todo): write your description
+            target_kps3d: (todo): write your description
+            has_kp3d: (array): write your description
+            target_verts: (todo): write your description
+            cam_gt: (int): write your description
+            cam_t_gt: (todo): write your description
+            shape_gt: (int): write your description
+            pose_gt: (bool): write your description
+        """
         device_id = para.get_device()
 
         batch_size = para.size(0)
 
         def weighted_l1_loss(input, target, weights=1, size_average=True):
+            """
+            Mean loss.
+
+            Args:
+                input: (array): write your description
+                target: (todo): write your description
+                weights: (array): write your description
+                size_average: (int): write your description
+            """
             out = torch.abs(input - target)
             out = out * weights
             if size_average:
@@ -339,6 +417,22 @@ class SMPL_Regressor(nn.Module):
         return loss_proj_kps, loss_kps3d, loss_verts, proj_kps
 
     def smpl2kps(self, beta, Rs, K, R, t, dist_coeffs, add_smpl_joint=False, theta=None, orig_size=None, selected_ind=None):
+        """
+        Smpl2kps : paramater : param beta : : param beta : : param beta : : param beta : : param beta : : param
+
+        Args:
+            self: (todo): write your description
+            beta: (float): write your description
+            Rs: (array): write your description
+            K: (array): write your description
+            R: (array): write your description
+            t: (array): write your description
+            dist_coeffs: (str): write your description
+            add_smpl_joint: (array): write your description
+            theta: (float): write your description
+            orig_size: (int): write your description
+            selected_ind: (todo): write your description
+        """
         return_dict = {}
         if orig_size is None:
             orig_size = self.orig_size
@@ -368,6 +462,16 @@ class SMPL_Regressor(nn.Module):
         return return_dict
 
     def verts2uvimg(self, verts, cam, f=None, tran=None):
+        """
+        Convert image touv image
+
+        Args:
+            self: (todo): write your description
+            verts: (str): write your description
+            cam: (todo): write your description
+            f: (todo): write your description
+            tran: (todo): write your description
+        """
         batch_size = verts.size(0)
 
         K, R, t = self.camera_matrix(cam)
@@ -386,6 +490,13 @@ class SMPL_Regressor(nn.Module):
         return iuv_image
 
     def camera_matrix(self, cam):
+        """
+        Build a camera matrix.
+
+        Args:
+            self: (todo): write your description
+            cam: (todo): write your description
+        """
         batch_size = cam.size(0)
 
         K = self.K.repeat(batch_size, 1, 1)
@@ -404,6 +515,12 @@ class SMPL_Regressor(nn.Module):
 
     # @property
     def detectron_weight_mapping(self):
+        """
+        R find the weight of the weight of the weight states.
+
+        Args:
+            self: (todo): write your description
+        """
         if self.mapping_to_detectron is None:
             d_wmap = {}  # detectron_weight_mapping
             d_orphan = []  # detectron orphan weight list
@@ -425,6 +542,13 @@ class SMPL_Regressor(nn.Module):
 
 class GlobalPredictor(nn.Module):
     def __init__(self, feat_in_dim=None):
+        """
+        Initialize the neural network.
+
+        Args:
+            self: (todo): write your description
+            feat_in_dim: (int): write your description
+        """
         super(GlobalPredictor, self).__init__()
 
         # For cache
@@ -468,6 +592,13 @@ class GlobalPredictor(nn.Module):
                 self.Conv_Body[3].init_weights('data/pretrained_model/resnet101-5d3b4d8f.pth')
 
     def forward(self, data):
+        """
+        Forward forward forward
+
+        Args:
+            self: (todo): write your description
+            data: (array): write your description
+        """
         return_dict = {}
         return_dict['visualization'] = {}
         return_dict['losses'] = {}
@@ -494,6 +625,12 @@ class GlobalPredictor(nn.Module):
 
     @property
     def detectron_weight_mapping(self):
+        """
+        Return the weight mapping of the weight of the weight matrix.
+
+        Args:
+            self: (todo): write your description
+        """
         d_wmap = {}  # detectron_weight_mapping
         d_orphan = []  # detectron orphan weight list
 
@@ -508,6 +645,14 @@ class GlobalPredictor(nn.Module):
 
 class DecomposedPredictor(nn.Module):
     def __init__(self, feat_in_dim=None, mean_params=None):
+        """
+        Initialize the network.
+
+        Args:
+            self: (todo): write your description
+            feat_in_dim: (int): write your description
+            mean_params: (dict): write your description
+        """
         super(DecomposedPredictor, self).__init__()
 
         # For cache
@@ -792,6 +937,14 @@ class DecomposedPredictor(nn.Module):
             self.p2r_gcn = GCN(128, 128, 128, num_layers=1, num_nodes=p2r_A.shape[1], normalize=False)
 
     def forward(self, body_iuv, limb_iuv):
+        """
+        Forward forward forward
+
+        Args:
+            self: (todo): write your description
+            body_iuv: (todo): write your description
+            limb_iuv: (todo): write your description
+        """
 
         return_dict = {}
         return_dict['visualization'] = {}
@@ -1049,6 +1202,12 @@ class DecomposedPredictor(nn.Module):
 
     @property
     def detectron_weight_mapping(self):
+        """
+        Return the weight mapping of the weight of the weight matrix.
+
+        Args:
+            self: (todo): write your description
+        """
         d_wmap = {}  # detectron_weight_mapping
         d_orphan = []  # detectron orphan weight list
 

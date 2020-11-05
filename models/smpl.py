@@ -16,6 +16,12 @@ class SMPL(_SMPL):
     """ Extension of the official SMPL implementation to support more joints """
 
     def __init__(self, *args, **kwargs):
+        """
+        Initialize joints.
+
+        Args:
+            self: (todo): write your description
+        """
         super(SMPL, self).__init__(*args, **kwargs)
         joints = [constants.JOINT_MAP[i] for i in constants.JOINT_NAMES]
         J_regressor_extra = np.load(path_config.JOINT_REGRESSOR_TRAIN_EXTRA)
@@ -25,6 +31,12 @@ class SMPL(_SMPL):
         self.ModelOutput.__new__.__defaults__ = (None,) * len(self.ModelOutput._fields)
 
     def forward(self, *args, **kwargs):
+        """
+        R forward computation
+
+        Args:
+            self: (todo): write your description
+        """
         kwargs['get_skin'] = True
         smpl_output = super(SMPL, self).forward(*args, **kwargs)
         extra_joints = vertices2joints(self.J_regressor_extra, smpl_output.vertices)

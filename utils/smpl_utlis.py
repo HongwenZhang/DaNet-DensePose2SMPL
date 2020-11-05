@@ -1,5 +1,11 @@
 
 def smpl_structure(inquiry_key):
+    """
+    Returns the smplacature structure.
+
+    Args:
+        inquiry_key: (str): write your description
+    """
     knowledge = {}
 
     knowledge['limb_pairs'] = [(0, 1), (1, 4), (4, 7), (7, 10),

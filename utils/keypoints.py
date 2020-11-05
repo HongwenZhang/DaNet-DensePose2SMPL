@@ -332,6 +332,16 @@ def generate_heatmap(joints, heatmap_size, sigma=1, joints_vis=None):
 
 
 def generate_3d_integral_preds_tensor(heatmaps, num_joints, x_dim, y_dim, z_dim):
+    """
+    Generate a 2d_3d predictions.
+
+    Args:
+        heatmaps: (array): write your description
+        num_joints: (int): write your description
+        x_dim: (int): write your description
+        y_dim: (int): write your description
+        z_dim: (int): write your description
+    """
     assert isinstance(heatmaps, torch.Tensor)
 
     if z_dim is not None:
@@ -370,6 +380,16 @@ def generate_3d_integral_preds_tensor(heatmaps, num_joints, x_dim, y_dim, z_dim)
 # integral pose estimation
 # https://github.com/JimmySuen/integral-human-pose/blob/99647e40ec93dfa4e3b6a1382c935cebb35440da/pytorch_projects/common_pytorch/common_loss/integral.py#L28
 def softmax_integral_tensor(preds, num_joints, hm_width, hm_height, hm_depth=None):
+    """
+    Softmax softmax.
+
+    Args:
+        preds: (array): write your description
+        num_joints: (int): write your description
+        hm_width: (int): write your description
+        hm_height: (int): write your description
+        hm_depth: (int): write your description
+    """
     # global soft max
     preds = preds.reshape((preds.shape[0], num_joints, -1))
     preds = F.softmax(preds, 2)

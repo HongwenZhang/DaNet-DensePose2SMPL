@@ -25,6 +25,17 @@ class Graph():
                  max_hop=1,
                  dilation=1,
                  norm_type='digraph'):
+        """
+        Initialize the layout.
+
+        Args:
+            self: (todo): write your description
+            layout: (todo): write your description
+            strategy: (todo): write your description
+            max_hop: (int): write your description
+            dilation: (todo): write your description
+            norm_type: (str): write your description
+        """
         self.max_hop = max_hop
         self.dilation = dilation
         self.norm_type = norm_type
@@ -37,9 +48,22 @@ class Graph():
         self.get_adjacency(strategy)
 
     def __str__(self):
+        """
+        The string representation of this object
+
+        Args:
+            self: (todo): write your description
+        """
         return self.A
 
     def get_edge(self, layout):
+        """
+        Get the edge from the graph.
+
+        Args:
+            self: (todo): write your description
+            layout: (str): write your description
+        """
         if layout == 'openpose':
             self.num_node = 18
             self_link = [(i, i) for i in range(self.num_node)]
@@ -108,6 +132,13 @@ class Graph():
             raise ValueError("Do Not Exist This Layout.")
 
     def get_adjacency(self, strategy):
+        """
+        R get the adjacency matrix.
+
+        Args:
+            self: (todo): write your description
+            strategy: (str): write your description
+        """
         valid_hop = range(0, self.max_hop + 1, self.dilation)
         adjacency = np.zeros((self.num_node, self.num_node))
         for hop in valid_hop:
@@ -159,6 +190,14 @@ class Graph():
 
 
 def get_hop_distance(num_node, edge, max_hop=1):
+    """
+    Calculates distance between two nodes.
+
+    Args:
+        num_node: (int): write your description
+        edge: (str): write your description
+        max_hop: (int): write your description
+    """
     A = np.zeros((num_node, num_node))
     for i, j in edge:
         A[j, i] = 1
@@ -174,6 +213,13 @@ def get_hop_distance(num_node, edge, max_hop=1):
 
 
 def normalize_digraph(A, AD_mode=True):
+    """
+    Normalize a matrix.
+
+    Args:
+        A: (todo): write your description
+        AD_mode: (todo): write your description
+    """
     if type(A).__module__ == 'numpy':
         if AD_mode:
             Dl = np.sum(A, 0)
@@ -230,6 +276,12 @@ def normalize_digraph(A, AD_mode=True):
 
 
 def normalize_undigraph(A):
+    """
+    Normalize the dlency matrix.
+
+    Args:
+        A: (todo): write your description
+    """
 
     if type(A).__module__ == 'numpy':
         Dl = np.sum(A, 0)

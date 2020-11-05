@@ -26,6 +26,17 @@ class BaseDataset(Dataset):
     """
 
     def __init__(self, options, dataset, ignore_3d=False, use_augmentation=True, is_train=True):
+        """
+        Initialize dataset.
+
+        Args:
+            self: (todo): write your description
+            options: (dict): write your description
+            dataset: (todo): write your description
+            ignore_3d: (todo): write your description
+            use_augmentation: (bool): write your description
+            is_train: (bool): write your description
+        """
         super(BaseDataset, self).__init__()
         self.dataset = dataset
         self.is_train = is_train
@@ -199,6 +210,13 @@ class BaseDataset(Dataset):
         return pose
 
     def __getitem__(self, index):
+        """
+        Retrieve item from index.
+
+        Args:
+            self: (todo): write your description
+            index: (int): write your description
+        """
         item = {}
         scale = self.scale[index].copy()
         center = self.center[index].copy()
@@ -300,4 +318,10 @@ class BaseDataset(Dataset):
         return item
 
     def __len__(self):
+        """
+        Returns the length of the image.
+
+        Args:
+            self: (todo): write your description
+        """
         return len(self.imgname)

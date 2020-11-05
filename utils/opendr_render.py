@@ -41,10 +41,29 @@ def rotateZ( points, angle ):
 
 class opendr_render(object):
     def __init__(self, ratio=2, color=None):
+        """
+        Initialize the ratio.
+
+        Args:
+            self: (todo): write your description
+            ratio: (todo): write your description
+            color: (bool): write your description
+        """
         self.ratio = ratio
         self.color = color
 
     def render(self, image, cam, K, verts, face):
+        """
+        Render the image as an rgb image.
+
+        Args:
+            self: (todo): write your description
+            image: (array): write your description
+            cam: (todo): write your description
+            K: (todo): write your description
+            verts: (str): write your description
+            face: (todo): write your description
+        """
         ## Create OpenDR renderer
         rn = ColoredRenderer()
 

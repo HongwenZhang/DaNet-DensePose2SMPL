@@ -50,6 +50,17 @@ class COCODataset(JointsDataset):
         [7,9],[8,10],[9,11],[2,3],[1,2],[1,3],[2,4],[3,5],[4,6],[5,7]]
     '''
     def __init__(self, options, dataset, subset, use_augmentation=True, is_train=True):
+        """
+        Initialize the dataset.
+
+        Args:
+            self: (todo): write your description
+            options: (dict): write your description
+            dataset: (todo): write your description
+            subset: (todo): write your description
+            use_augmentation: (bool): write your description
+            is_train: (bool): write your description
+        """
         super().__init__(options, dataset, subset, use_augmentation, is_train)
         # self.nms_thre = cfg.TEST.NMS_THRE
         # self.image_thre = cfg.TEST.IMAGE_THRE
@@ -123,6 +134,12 @@ class COCODataset(JointsDataset):
         return image_ids
 
     def _get_db(self):
+        """
+        Retrieve db
+
+        Args:
+            self: (todo): write your description
+        """
         if self.is_train or self.use_gt_bbox:
             # use ground truth bbox
             gt_db = self._load_coco_keypoint_annotations()
@@ -206,10 +223,27 @@ class COCODataset(JointsDataset):
         return rec
 
     def _box2cs(self, box):
+        """
+        Returns ( x y w h w h w h
+
+        Args:
+            self: (todo): write your description
+            box: (todo): write your description
+        """
         x, y, w, h = box[:4]
         return self._xywh2cs(x, y, w, h)
 
     def _xywh2cs(self, x, y, w, h):
+        """
+        Convert pixel coordinates to pixel coordinates.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+            y: (todo): write your description
+            w: (todo): write your description
+            h: (todo): write your description
+        """
         center = np.zeros((2), dtype=np.float32)
         center[0] = x + w * 0.5
         center[1] = y + h * 0.5
@@ -242,6 +276,12 @@ class COCODataset(JointsDataset):
         return image_path
 
     def _load_coco_person_detection_results(self):
+        """
+        Load detector detector boxes.
+
+        Args:
+            self: (todo): write your description
+        """
         all_boxes = None
         with open(self.bbox_file, 'r') as f:
             all_boxes = json.load(f)
@@ -286,6 +326,17 @@ class COCODataset(JointsDataset):
 
     def evaluate(self, preds, output_dir, all_boxes, img_path, ckp_name,
                  *args, **kwargs):
+        """
+        Evaluate the model.
+
+        Args:
+            self: (todo): write your description
+            preds: (array): write your description
+            output_dir: (str): write your description
+            all_boxes: (todo): write your description
+            img_path: (str): write your description
+            ckp_name: (str): write your description
+        """
         rank = 0
 
         res_folder = os.path.join(output_dir, 'results')
@@ -365,6 +416,14 @@ class COCODataset(JointsDataset):
             return {'Null': 0}, 0
 
     def _write_coco_keypoint_results(self, keypoints, res_file):
+        """
+        Writes the results to a coco file.
+
+        Args:
+            self: (todo): write your description
+            keypoints: (str): write your description
+            res_file: (str): write your description
+        """
         data_pack = [
             {
                 'cat_id': self._class_to_coco_ind[cls],
@@ -393,6 +452,13 @@ class COCODataset(JointsDataset):
                     f.write(c)
 
     def _coco_keypoint_results_one_category_kernel(self, data_pack):
+        """
+        Coco keypoint results.
+
+        Args:
+            self: (todo): write your description
+            data_pack: (str): write your description
+        """
         cat_id = data_pack['cat_id']
         keypoints = data_pack['keypoints']
         cat_results = []
@@ -428,6 +494,14 @@ class COCODataset(JointsDataset):
         return cat_results
 
     def _do_python_keypoint_eval(self, res_file, res_folder):
+        """
+        Evaluate the keypoint.
+
+        Args:
+            self: (todo): write your description
+            res_file: (str): write your description
+            res_folder: (str): write your description
+        """
         coco_dt = self.coco.loadRes(res_file)
         coco_eval = COCOeval(self.coco, coco_dt, 'keypoints')
         coco_eval.params.useSegm = None

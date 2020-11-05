@@ -16,6 +16,12 @@ from models.module.res_module import PoseResNet
 
 class IUV_Estimator(nn.Module):
     def __init__(self):
+        """
+        Initialize the vtk.
+
+        Args:
+            self: (todo): write your description
+        """
         super(IUV_Estimator, self).__init__()
 
         if cfg.DANET.USE_LEARNED_RATIO:
@@ -55,6 +61,20 @@ class IUV_Estimator(nn.Module):
         self.part_channels = 256
 
     def forward(self, data, iuv_image_gt=None, smpl_kps_gt=None, kps3d_gt=None, pretrained=False, uvia_dp_gt=None, has_iuv=None, has_dp=None):
+        """
+        Parameters ---------- data : list.
+
+        Args:
+            self: (todo): write your description
+            data: (array): write your description
+            iuv_image_gt: (todo): write your description
+            smpl_kps_gt: (todo): write your description
+            kps3d_gt: (todo): write your description
+            pretrained: (bool): write your description
+            uvia_dp_gt: (dict): write your description
+            has_iuv: (todo): write your description
+            has_dp: (todo): write your description
+        """
         return_dict = {}
         return_dict['losses'] = {}
         return_dict['metrics'] = {}
@@ -261,6 +281,14 @@ class IUV_Estimator(nn.Module):
         return return_dict
 
     def affine_para(self, stn_centers, part_hidden=None):
+        """
+        Affine affine affine optimizer.
+
+        Args:
+            self: (todo): write your description
+            stn_centers: (todo): write your description
+            part_hidden: (str): write your description
+        """
         thetas = []
         scales = []
 
@@ -303,6 +331,18 @@ class IUV_Estimator(nn.Module):
 
 
     def body_uv_losses(self, u_pred, v_pred, index_pred, ann_pred, uvia_list, has_iuv=None):
+        """
+        Perform the losses.
+
+        Args:
+            self: (todo): write your description
+            u_pred: (array): write your description
+            v_pred: (todo): write your description
+            index_pred: (todo): write your description
+            ann_pred: (todo): write your description
+            uvia_list: (list): write your description
+            has_iuv: (todo): write your description
+        """
         batch_size = u_pred.size(0)
         device = u_pred.device
 
@@ -447,6 +487,12 @@ class IUV_Estimator(nn.Module):
 
     @property
     def detectron_weight_mapping(self):
+        """
+        Return the weight mapping of the weight of the weight matrix.
+
+        Args:
+            self: (todo): write your description
+        """
         d_wmap = {}  # detectron_weight_mapping
         d_orphan = []  # detectron orphan weight list
 

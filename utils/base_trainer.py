@@ -14,6 +14,13 @@ class BaseTrainer(object):
     Takes care of checkpointing/logging/resuming training.
     """
     def __init__(self, options):
+        """
+        Initialize the simulation.
+
+        Args:
+            self: (todo): write your description
+            options: (dict): write your description
+        """
         self.options = options
         self.endtime = time.time() + self.options.time_to_run
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -105,13 +112,39 @@ class BaseTrainer(object):
 
     # The following methods (with the possible exception of test) have to be implemented in the derived classes
     def init_fn(self):
+        """
+        Initialize the fn.
+
+        Args:
+            self: (todo): write your description
+        """
         raise NotImplementedError('You need to provide an _init_fn method')
 
     def train_step(self, input_batch):
+        """
+        Train a single step.
+
+        Args:
+            self: (todo): write your description
+            input_batch: (todo): write your description
+        """
         raise NotImplementedError('You need to provide a _train_step method')
 
     def train_summaries(self, input_batch):
+        """
+        Train the model.
+
+        Args:
+            self: (todo): write your description
+            input_batch: (todo): write your description
+        """
         raise NotImplementedError('You need to provide a _train_summaries method')
 
     def test(self):
+        """
+        Return the test is set
+
+        Args:
+            self: (todo): write your description
+        """
         pass
