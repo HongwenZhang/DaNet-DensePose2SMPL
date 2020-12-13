@@ -99,22 +99,13 @@ python3 eval_coco.py --checkpoint=data/pretrained_model/danet_model_h36m_dpcoco.
 TODO
 
 ## Citation
-If this work is helpful in your research, please cite the following papers.
+If this work is helpful in your research, please cite the following paper.
 ```
-@inproceedings{zhang2019danet,
-  title={DaNet: Decompose-and-aggregate Network for 3D Human Shape and Pose Estimation},
-  author={Zhang, Hongwen and Cao, Jie and Lu, Guo and Ouyang, Wanli and Sun, Zhenan},
-  booktitle={Proceedings of the 27th ACM International Conference on Multimedia},
-  pages={935--944},
-  year={2019},
-  organization={ACM}
-}
-
-@article{zhang2019learning,
+@article{zhang2020learning,
   title={Learning 3D Human Shape and Pose from Dense Body Parts},
   author={Zhang, Hongwen and Cao, Jie and Lu, Guo and Ouyang, Wanli and Sun, Zhenan},
-  journal={arXiv preprint arXiv:1912.13344},
-  year={2019}
+  journal={IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  year={2020}
 }
 ```
 
