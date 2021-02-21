@@ -31,7 +31,7 @@ bash get_densepose_uv.sh
 
 - Collect SMPL model files from [https://smpl.is.tue.mpg.de](https://smpl.is.tue.mpg.de) and [UP](https://github.com/classner/up/blob/master/models/3D/basicModel_neutral_lbs_10_207_0_v1.0.0.pkl). Rename model files and put them into the `./data/smpl` directory.
 
-> Fetch preprocessed data from [SPIN](https://github.com/nkolot/SPIN#fetch-data).
+> Fetch preprocessed data from [SPIN](https://github.com/nkolot/SPIN#fetch-data) and [here](https://drive.google.com/drive/folders/1vP3HxsMHdB3_2lthLDq1RTsVeBnOJlpC?usp=sharing).
 
 > Download the [pre-trained models](https://drive.google.com/drive/folders/1vP3HxsMHdB3_2lthLDq1RTsVeBnOJlpC?usp=sharing) and put them into the `./data/pretrained_model` directory.
 
@@ -50,11 +50,16 @@ After collecting the above necessary files, the directory structure of `./data` 
 │   ├── SMPL_MALE.pkl
 │   └── SMPL_NEUTRAL.pkl
 ├── smpl_mean_params.npz
+├── static_fits
+│   └── .npy files
 └── UV_data
     ├── UV_Processed.mat
     └── UV_symmetry_transforms.mat
 ```
 
+## Rendering IUV
+
+The [IUV_Renderer](utils/renderer.py#L202) can be used to generate ground-truth IUV maps when given a batch of SMPL vertices and cameras. An example of usage can be found [here](demo.py#L151).
 
 ## Demo
 
@@ -96,7 +101,16 @@ python3 eval_coco.py --checkpoint=data/pretrained_model/danet_model_h36m_dpcoco.
 
 ## Training
 
-TODO
+To perform training, we need to collect pretraining models and preprocessed files of training datasets at first.
+
+The pretraining models can be downloaded from [HRNet](https://github.com/HRNet/HRNet-Human-Pose-Estimation#:~:text=Download%20pretrained%20models).
+The preprocessed labels have the same format as SPIN and can be retrieved from [here](https://github.com/nkolot/SPIN#fetch-data). Please refer to [SPIN](https://github.com/nkolot/SPIN) for more details about data preprocessing. As for DensePose-COCO, we provide the preprocessed data [here](https://drive.google.com/drive/folders/1vP3HxsMHdB3_2lthLDq1RTsVeBnOJlpC?usp=sharing).
+
+The training of DaNet consists of two stages. We will train the IUV estimator alone at the first stage for around 5k iterations, then we involve other modules in training for the rest of 60k iterations at the second stage. Example usage:
+```
+python3 train.py --name danet --batch_size 16 --vis_interval 1000 --pretr_step 5000
+```
+Running the above command will use Human3.6M and DensePose-COCO for training by default. We can monitor the training process by setting up a TensorBoard at the directory `./logs`.
 
 ## Citation
 If this work is helpful in your research, please cite the following paper.
@@ -111,9 +125,13 @@ If this work is helpful in your research, please cite the following paper.
 
 ## Acknowledgments
 
-The code is developed upon the following projects. Many thanks to the original authors.
+The code is developed upon the following projects. Many thanks to their contributions.
 
 - [SPIN](https://github.com/nkolot/SPIN)
+
+- [DensePose](https://github.com/facebookresearch/DensePose)
+
+- [HMR](https://github.com/akanazawa/hmr)
 
 - [pytorch_HMR](https://github.com/MandyMo/pytorch_HMR)
 
@@ -122,5 +140,3 @@ The code is developed upon the following projects. Many thanks to the original a
 - [pose_resnet](https://github.com/Microsoft/human-pose-estimation.pytorch)
 
 - [Detectron.pytorch](https://github.com/roytseng-tw/Detectron.pytorch)
-
-- [DensePose](https://github.com/facebookresearch/DensePose)

@@ -36,7 +36,6 @@ from utils.pose_utils import reconstruction_error
 
 from models.core.config import cfg, cfg_from_file
 from easydict import EasyDict
-from utils.vis import vis_smpl_iuv
 
 import logging
 logger = logging.getLogger(__name__)
@@ -51,7 +50,7 @@ parser.add_argument('--shuffle', default=False, action='store_true', help='Shuff
 parser.add_argument('--num_workers', default=8, type=int, help='Number of processes for data loading')
 parser.add_argument('--result_file', default=None, help='If set, save detections to a .npz file')
 parser.add_argument('--regressor', type=str, default='danet', choices=['hmr', 'danet'], help='Name of the SMPL regressor.')
-parser.add_argument('--danet_cfg_file', type=str, default='./configs/danet_h36m_itw.yaml',
+parser.add_argument('--danet_cfg_file', type=str, default='./configs/danet_default.yaml',
                    help='Name of the SMPL regressor.')
 
 
@@ -328,7 +327,7 @@ if __name__ == '__main__':
     if args.regressor == 'hmr':
         model = hmr(path_config.SMPL_MEAN_PARAMS)
     elif args.regressor == 'danet':
-        model = DaNet(args, path_config.SMPL_MEAN_PARAMS)
+        model = DaNet(args, path_config.SMPL_MEAN_PARAMS, pretrained=False)
 
     checkpoint = torch.load(args.checkpoint)
     model.load_state_dict(checkpoint['model'], strict=False)

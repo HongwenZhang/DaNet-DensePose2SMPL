@@ -10,24 +10,24 @@ from .base_dataset import BaseDataset
 class MixedDataset(torch.utils.data.Dataset):
 
     def __init__(self, options, **kwargs):
-        if options.h36m_dp:
-            print('use dp coco dataset.')
+        if options.train_data == 'h36m_dp':
+            print('Training Data: Human3.6M and DensePose-COCO datasets.')
             self.dataset_list = ['h36m', 'dp_coco']
             self.dataset_dict = {'h36m': 0, 'dp_coco': 1}
-        elif options.h36m_coco_itw:
-            print('use coco and other itw dataset.')
+        elif options.train_data == 'h36m_coco_itw':
+            print('Training Data: Human3.6M, COCO, and other in-the-wild datasets.')
             self.dataset_list = ['h36m', 'lsp-orig', 'mpii', 'lspet', 'coco', 'mpi-inf-3dhp']
             self.dataset_dict = {'h36m': 0, 'lsp-orig': 1, 'mpii': 2, 'lspet': 3, 'coco': 4, 'mpi-inf-3dhp': 5}
 
         self.datasets = [BaseDataset(options, ds, **kwargs) for ds in self.dataset_list]
         self.dataset_length = {self.dataset_list[idx]: len(ds) for idx, ds in enumerate(self.datasets)}
         total_length = sum([len(ds) for ds in self.datasets])
-        if options.h36m_dp:
+        if options.train_data == 'h36m_dp':
             length_itw = sum([len(ds) for ds in self.datasets[1:]])
         else:
             length_itw = sum([len(ds) for ds in self.datasets[1:-1]])
         self.length = max([len(ds) for ds in self.datasets])
-        if options.h36m_dp:
+        if options.train_data == 'h36m_dp':
             # H36M + DP-COCO
             self.partition = [0.5, 0.5*len(self.datasets[1])/length_itw]
         else:

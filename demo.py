@@ -1,5 +1,5 @@
 """
-This script can be used to produce demo results.
+This script is used to produce demo results.
 Example usage:
 ```
 python3 demo.py --checkpoint=data/pretrained_model/danet_model_h36m_itw.pt --img_dir ./examples --use_opendr
@@ -10,7 +10,6 @@ from __future__ import division
 
 import argparse
 import os
-import logging
 from easydict import EasyDict
 from PIL import Image
 
@@ -30,19 +29,17 @@ from models.core.config import cfg, cfg_from_file
 from models.danet import DaNet
 from skimage.transform import resize
 from utils.iuvmap import iuv_map2img
+from utils.renderer import IUV_Renderer
 
 import path_config
-
-import logging
-logger = logging.getLogger(__name__)
 
 
 def parse_args():
     """Parse input arguments"""
-    parser = argparse.ArgumentParser(description='DaNet for 3D Human Shape and Pose')
+    parser = argparse.ArgumentParser(description='DaNet for 3D Human Shape and Pose Estimation')
 
     parser.add_argument(
-        '--cfg', dest='cfg_file', default='configs/danet_h36m_itw.yaml',
+        '--cfg', dest='cfg_file', default='configs/danet_default.yaml',
         help='config file for training / testing')
     parser.add_argument(
         '--checkpoint', help='checkpoint path to load')
@@ -59,12 +56,12 @@ def parse_args():
 def main():
     """Main function"""
     args = parse_args()
+    args.batch_size = 1
 
     cfg_from_file(args.cfg_file)
 
     cfg.DANET.REFINEMENT = EasyDict(cfg.DANET.REFINEMENT)
     cfg.MSRES_MODEL.EXTRA = EasyDict(cfg.MSRES_MODEL.EXTRA)
-    cfg.batch_size = 1
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
@@ -84,14 +81,17 @@ def main():
         smpl = smpl_female
 
     if args.use_opendr:
-        from utils.opendr_render import opendr_render
-        dr_render = opendr_render(ratio=1)
+        from utils.renderer import opendr_render
+        dr_render = opendr_render()
+    
+    # IUV renderer
+    iuv_renderer = IUV_Renderer()
 
     if not os.path.exists(args.out_dir):
         os.makedirs(args.out_dir)
 
     ### Model ###
-    model = DaNet(cfg, path_config.SMPL_MEAN_PARAMS).to(device)
+    model = DaNet(args, path_config.SMPL_MEAN_PARAMS, pretrained=False).to(device)
 
     checkpoint = torch.load(args.checkpoint)
     model.load_state_dict(checkpoint['model'], strict=False)
@@ -148,7 +148,7 @@ def main():
         smpl_output = smpl(betas=betas_pred, body_pose=rotmat_pred[:, 1:],
                                    global_orient=rotmat_pred[:, 0].unsqueeze(1), pose2rot=False)
         verts_pred = smpl_output.vertices
-        render_iuv = model.iuv2smpl.verts2uvimg(verts_pred[0].unsqueeze(0), cam=camera_pred[0].unsqueeze(0))
+        render_iuv = iuv_renderer.verts2uvimg(verts_pred, camera_pred)
         render_iuv = render_iuv[0].cpu().numpy()
 
         render_iuv = np.transpose(render_iuv, (1, 2, 0))
@@ -163,7 +163,7 @@ def main():
 
         if args.use_opendr:
             # visualize the predicted SMPL model using the opendr renderer
-            K = model.iuv2smpl.K[0].cpu().numpy()
+            K = iuv_renderer.K[0].cpu().numpy()
             _, _, img_smpl, smpl_rgba = dr_render.render(image_tensor[0].cpu().numpy(),
                                                          camera_pred[0].cpu().numpy(), K,
                                                          verts_pred.cpu().numpy(),
@@ -176,6 +176,8 @@ def main():
         img_vis[img_vis < 0.0] = 0.0
         img_vis[img_vis > 1.0] = 1.0
         imsave(os.path.join(args.out_dir, img_id + '_result.png'), img_vis)
+    
+    print('Demo results have been saved in {}.'.format(args.out_dir))
 
 
 if __name__ == '__main__':

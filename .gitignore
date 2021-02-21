@@ -109,6 +109,9 @@ yamls/
 # logs
 logs/
 
+# output
+output/
+
 # vim swap files
 *.swp
 *.pyc

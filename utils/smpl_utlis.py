@@ -1,8 +1,8 @@
 
 def smpl_structure(inquiry_key):
-    knowledge = {}
+    constants_dict = {}
 
-    knowledge['limb_pairs'] = [(0, 1), (1, 4), (4, 7), (7, 10),
+    constants_dict['limb_pairs'] = [(0, 1), (1, 4), (4, 7), (7, 10),
                                (0, 2), (2, 5), (5, 8), (8, 11),
                                (0, 3), (3, 6), (6, 9),
                                (9, 13), (13, 16), (16, 18), (18, 20), (20, 22),
@@ -10,23 +10,23 @@ def smpl_structure(inquiry_key):
                                (9, 12), (12, 15)]  #,
                                # (12, 17), (12, 16)]
 
-    knowledge['smpl_parents'] = [[0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 12, 13, 14, 16, 17, 18, 19, 20, 21],
+    constants_dict['smpl_parents'] = [[0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 12, 13, 14, 16, 17, 18, 19, 20, 21],
                                  [3, 3, 3, 3, 0, 0, 0, 1, 2, 3, 4, 5, 6, 6, 6, 9, 9, 9, 13, 14, 16, 17, 18, 19]]
 
-    knowledge['smpl_children'] = [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23],
+    constants_dict['smpl_children'] = [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23],
                                   [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 10, 11, 15, 16, 17, 15, 18, 19, 20, 21, 22, 23, 22, 23]]
 
-    knowledge['m_l_r'] = [[0, 3, 6, 9, 12, 15],
+    constants_dict['m_l_r'] = [[0, 3, 6, 9, 12, 15],
                           [1, 4, 7, 10, 13, 16, 18, 20, 22],
                           [2, 5, 8, 11, 14, 17, 19, 21, 23]]
 
-    knowledge['branch'] = [[0, 3, 6, 9, 12, 15],
+    constants_dict['branch'] = [[0, 3, 6, 9, 12, 15],
                            [1, 4, 7, 10],
                            [13, 16, 18, 20, 22],
                            [2, 5, 8, 11],
                            [14, 17, 19, 21, 23]]
 
-    knowledge['smpl2dp_part'] = [[1, 2],  # 0: 'Pelvis'
+    constants_dict['smpl2dp_part'] = [[1, 2],  # 0: 'Pelvis'
                                  [8, 10],  # 1: 'L_Hip'
                                  [7, 9],  # 2: 'R_Hip'
                                  [1, 2],  # 3: 'Spine1'
@@ -52,7 +52,7 @@ def smpl_structure(inquiry_key):
                                  [20, 22, 3]  # 23: 'R_Hand'
                                  ]  #
 
-    knowledge['dp2smpl_mapping'] = [[7, 8, 9, 10, 1, 2],  # 0: 'Pelvis'
+    constants_dict['dp2smpl_mapping'] = [[7, 8, 9, 10, 1, 2],  # 0: 'Pelvis'
                                     [1, 2, 8, 10, 12, 14],  # 1: 'L_Hip'
                                     [1, 2, 7, 9, 11, 13],  # 2: 'R_Hip'
                                     [7, 8, 9, 10, 1, 2],  # 3: 'Spine1'
@@ -78,6 +78,6 @@ def smpl_structure(inquiry_key):
                                     [16, 18, 20, 22, 3, 3]  # 23: 'R_Hand'
                                     ]  #
 
-    # knowledge['dp2smpl_mapping'] = [range(1, 25)] * 24  #
+    # constants_dict['dp2smpl_mapping'] = [range(1, 25)] * 24  #
 
-    return knowledge[inquiry_key]
+    return constants_dict[inquiry_key]

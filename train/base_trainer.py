@@ -1,3 +1,4 @@
+# This script is borrowed and extended from https://github.com/nkolot/SPIN/blob/master/utils/base_trainer.py
 from __future__ import division
 import sys
 import time
@@ -46,10 +47,8 @@ class BaseTrainer(object):
                                        if k in model_dict.keys() and not k.startswith('iuv2smpl.smpl.')}
                     model_dict.update(pretrained_dict)
 
-                    self.models_dict[model].load_state_dict(model_dict, strict=False)
-                    print('Checkpoint loaded')
-
-                    # self.models_dict[model].load_state_dict(checkpoint[model], strict=False)
+                    self.models_dict[model].load_state_dict(model_dict, strict=True)
+                    print('{} Checkpoint loaded'.format(checkpoint_file))
 
     def train(self):
         """Training process."""
@@ -79,6 +78,9 @@ class BaseTrainer(object):
                     # Tensorboard logging every summary_steps steps
                     if (self.step_count - 1) % self.options.summary_steps == 0:
                         self.train_summaries(batch, *out)
+                    # Tensorboard visualization every vis_interval steps
+                    if (self.step_count - 1) % self.options.vis_interval == 0:
+                        self.visualize(batch, *out)
                     # Save checkpoint every checkpoint_steps steps
                     if self.step_count % self.options.checkpoint_steps == 0:
                         self.saver.save_checkpoint(self.models_dict, self.optimizers_dict, epoch, step+1, self.options.batch_size, train_data_loader.sampler.dataset_perm, self.step_count)
@@ -112,6 +114,9 @@ class BaseTrainer(object):
 
     def train_summaries(self, input_batch):
         raise NotImplementedError('You need to provide a _train_summaries method')
+
+    def visualize(self, input_batch):
+        raise NotImplementedError('You need to provide a _visualize method')
 
     def test(self):
         pass

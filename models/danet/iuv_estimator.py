@@ -15,7 +15,7 @@ from models.module.res_module import PoseResNet
 
 
 class IUV_Estimator(nn.Module):
-    def __init__(self):
+    def __init__(self, pretrained=True):
         super(IUV_Estimator, self).__init__()
 
         if cfg.DANET.USE_LEARNED_RATIO:
@@ -42,19 +42,20 @@ class IUV_Estimator(nn.Module):
             part_out_dim = 1 + len(self.dp2smpl_mapping[0])
             if cfg.DANET.IUV_REGRESSOR in ['resnet']:
                 self.iuv_est = PoseResNet(part_out_dim=part_out_dim)
-                if len(cfg.MSRES_MODEL.PRETRAINED) > 0:
+                if pretrained:
                     self.iuv_est.init_weights(cfg.MSRES_MODEL.PRETRAINED)
             elif cfg.DANET.IUV_REGRESSOR in ['hrnet']:
                 self.iuv_est = PoseHighResolutionNet(part_out_dim=part_out_dim)
-                if cfg.HR_MODEL.PRETR_SET in ['imagenet']:
-                    self.iuv_est.init_weights(cfg.HR_MODEL.PRETRAINED_IM)
-                elif cfg.HR_MODEL.PRETR_SET in ['coco']:
-                    self.iuv_est.init_weights(cfg.HR_MODEL.PRETRAINED_COCO)
+                if pretrained:
+                    if cfg.HR_MODEL.PRETR_SET in ['imagenet']:
+                        self.iuv_est.init_weights(cfg.HR_MODEL.PRETRAINED_IM)
+                    elif cfg.HR_MODEL.PRETR_SET in ['coco']:
+                        self.iuv_est.init_weights(cfg.HR_MODEL.PRETRAINED_COCO)
 
         self.bodyfeat_channels = 1024
         self.part_channels = 256
 
-    def forward(self, data, iuv_image_gt=None, smpl_kps_gt=None, kps3d_gt=None, pretrained=False, uvia_dp_gt=None, has_iuv=None, has_dp=None):
+    def forward(self, data, iuv_image_gt=None, smpl_kps_gt=None, kps3d_gt=None, uvia_dp_gt=None, has_iuv=None, has_dp=None):
         return_dict = {}
         return_dict['losses'] = {}
         return_dict['metrics'] = {}
@@ -93,7 +94,7 @@ class IUV_Estimator(nn.Module):
         if cfg.DANET.INPUT_MODE in ['iuv_feat', 'feat', 'iuv_gt_feat']:
             return_dict['global_featmaps'] = uv_est_dic['xd']
 
-        if iuv_image_gt is not None:
+        if self.training and iuv_image_gt is not None:
             uvia_list = iuv_img2map(iuv_image_gt)
             loss_U, loss_V, loss_IndexUV, loss_segAnn = self.body_uv_losses(u_pred, v_pred, index_pred, ann_pred,
                                                                             uvia_list, has_iuv)
@@ -102,7 +103,7 @@ class IUV_Estimator(nn.Module):
             return_dict['losses']['loss_IndexUV'] = loss_IndexUV
             return_dict['losses']['loss_segAnn'] = loss_segAnn
 
-        if uvia_dp_gt is not None:
+        if self.training and uvia_dp_gt is not None:
             if torch.sum(has_dp) > 0:
                 dp_on = (has_dp == 1)
                 uvia_dp_gt_ = {k: v[dp_on] if isinstance(v, torch.Tensor) else v for k, v in uvia_dp_gt.items()}
@@ -131,7 +132,6 @@ class IUV_Estimator(nn.Module):
 
             smpl_kps_hm_size = skps_hm_pred.size(-1)
 
-            # return_dict['skps_hm_pred'] = torch.sum(skps_hm_pred.detach(), dim=1).unsqueeze(1)
             return_dict['skps_hm_pred'] = skps_hm_pred.detach()
 
             stn_centers = softmax_integral_tensor(10 * skps_hm_pred, skps_hm_pred.size(1), skps_hm_pred.size(-2),
@@ -139,24 +139,23 @@ class IUV_Estimator(nn.Module):
             stn_centers /= 0.5 * smpl_kps_hm_size
             stn_centers -= 1
 
-            if smpl_kps_gt is not None and cfg.DANET.STN_HM_WEIGHTS > 0:
-                smpl_kps_norm = smpl_kps_gt.detach().clone()
-                # [-1, 1]  ->  [0, 1]
-                smpl_kps_norm[:, :, :2] *= 0.5
-                smpl_kps_norm[:, :, :2] += 0.5
-                smpl_kps_norm = smpl_kps_norm.view(smpl_kps_norm.size(0) * smpl_kps_norm.size(1), -1)[:, :2]
-                skps_hm_gt, _ = generate_heatmap(smpl_kps_norm, heatmap_size=cfg.DANET.HEATMAP_SIZE)
-                skps_hm_gt = skps_hm_gt.view(smpl_kps_gt.size(0), smpl_kps_gt.size(1), cfg.BODY_UV_RCNN.HEATMAP_SIZE,
-                                             cfg.DANET.HEATMAP_SIZE)
-                skps_hm_gt = skps_hm_gt.detach()
-                return_dict['skps_hm_gt'] = skps_hm_gt.detach()
+            if self.training and smpl_kps_gt is not None:
+                if cfg.DANET.STN_HM_WEIGHTS > 0:
+                    smpl_kps_norm = smpl_kps_gt.detach().clone()
+                    # [-1, 1]  ->  [0, 1]
+                    smpl_kps_norm[:, :, :2] *= 0.5
+                    smpl_kps_norm[:, :, :2] += 0.5
+                    smpl_kps_norm = smpl_kps_norm.view(smpl_kps_norm.size(0) * smpl_kps_norm.size(1), -1)[:, :2]
+                    skps_hm_gt, _ = generate_heatmap(smpl_kps_norm, heatmap_size=cfg.DANET.HEATMAP_SIZE)
+                    skps_hm_gt = skps_hm_gt.view(smpl_kps_gt.size(0), smpl_kps_gt.size(1), cfg.BODY_UV_RCNN.HEATMAP_SIZE,
+                                                cfg.DANET.HEATMAP_SIZE)
+                    skps_hm_gt = skps_hm_gt.detach()
+                    return_dict['skps_hm_gt'] = skps_hm_gt.detach()
 
-                loss_stnhm = F.smooth_l1_loss(skps_hm_pred, skps_hm_gt, size_average=True)  # / smpl_kps_gt.size(0)
-                loss_stnhm *= cfg.DANET.STN_HM_WEIGHTS
-                return_dict['losses']['loss_stnhm'] = loss_stnhm
+                    loss_stnhm = F.smooth_l1_loss(skps_hm_pred, skps_hm_gt, size_average=True)  # / smpl_kps_gt.size(0)
+                    loss_stnhm *= cfg.DANET.STN_HM_WEIGHTS
+                    return_dict['losses']['loss_stnhm'] = loss_stnhm
 
-            if smpl_kps_gt is not None:
-                # train mode
                 if cfg.DANET.STN_KPS_WEIGHTS > 0:
                     if smpl_kps_gt.shape[-1] == 3:
                         loss_roi = 0
@@ -171,7 +170,7 @@ class IUV_Estimator(nn.Module):
                         loss_roi *= cfg.DANET.STN_KPS_WEIGHTS
                         return_dict['losses']['loss_roi'] = loss_roi
 
-                if self.training and cfg.DANET.STN_CENTER_JITTER > 0:
+                if cfg.DANET.STN_CENTER_JITTER > 0:
                     stn_centers = stn_centers + cfg.DANET.STN_CENTER_JITTER * (torch.rand(stn_centers.size()).cuda(stn_centers.device) - 0.5)
 
             if cfg.DANET.STN_PART_VIS_SCORE > 0:
@@ -214,8 +213,8 @@ class IUV_Estimator(nn.Module):
             if cfg.DANET.INPUT_MODE in ['iuv_feat', 'feat', 'iuv_gt_feat']:
                 return_dict['part_featmaps'] = part_maps.view(part_maps.size(0), 24, -1, part_maps.size(-2), part_maps.size(-1))
 
-            ## partial uv gt
-            if iuv_image_gt is not None:
+            ## partial uv losses
+            if self.training and iuv_image_gt is not None:
                 pred_gt_ratio = float(part_map_size) / uvia_list[0].size(-1)
                 iuv_resized = [F.interpolate(uvia_list[i], scale_factor=pred_gt_ratio, mode='nearest') for i in
                                range(3)]

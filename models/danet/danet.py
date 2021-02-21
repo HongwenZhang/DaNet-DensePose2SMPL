@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from utils.iuvmap import iuv_img2map, iuv_map2img, iuvmap_clean
 from utils.geometry import batch_rodrigues
+from utils.renderer import IUV_Renderer
 
 from .iuv_estimator import IUV_Estimator
 from .smpl_regressor import SMPL_Regressor
@@ -33,7 +34,7 @@ class DaNet(nn.Module):
     H. Zhang et al. DaNet: Decompose-and-aggregate Network for 3D Human Shape and Pose Estimation
     H. Zhang et al. Learning 3D Human Shape and Pose from Dense Body Parts
     '''
-    def __init__(self, options, smpl_mean_params):
+    def __init__(self, options, smpl_mean_params, pretrained=True):
         super(DaNet, self).__init__()
 
         self.options = options
@@ -43,7 +44,7 @@ class DaNet(nn.Module):
         self.orphans_in_detectron = None
 
         if cfg.DANET.INPUT_MODE not in ['iuv_gt'] or cfg.DANET.DECOMPOSED:
-            self.img2iuv = IUV_Estimator()
+            self.img2iuv = IUV_Estimator(pretrained)
             if cfg.DANET.INPUT_MODE not in ['iuv_gt']:
                 try:
                     final_feat_dim = self.img2iuv.iuv_est.final_feat_dim
@@ -53,7 +54,9 @@ class DaNet(nn.Module):
                 final_feat_dim = None
         else:
             final_feat_dim = None
-        self.iuv2smpl = SMPL_Regressor(options=options, feat_in_dim=final_feat_dim, smpl_mean_params=smpl_mean_params)
+
+        self.iuv2smpl = SMPL_Regressor(options, cfg.DANET.INIMG_SIZE, final_feat_dim, smpl_mean_params, pretrained)
+        self.iuv_renderer = IUV_Renderer(cfg.DANET.INIMG_SIZE, cfg.DANET.HEATMAP_SIZE)
 
     @check_inference
     def infer_net(self, image):
@@ -142,8 +145,8 @@ class DaNet(nn.Module):
         image = in_dict['img']
         gt_pose = in_dict['opt_pose'] if 'opt_pose' in in_dict else None  # SMPL pose parameters
         gt_betas = in_dict['opt_betas'] if 'opt_betas' in in_dict else None  # SMPL beta parameters
-        target_kps = in_dict['target_kps'] if 'target_kps' in in_dict else None
-        target_kps3d = in_dict['target_kps3d'] if 'target_kps3d' in in_dict else None
+        target_kps = in_dict['keypoints'] if 'keypoints' in in_dict else None
+        target_kps3d = in_dict['pose_3d'] if 'pose_3d' in in_dict else None
         has_iuv = in_dict['has_iuv'].byte() if 'has_iuv' in in_dict else None
         has_dp = in_dict['has_dp'].byte() if 'has_dp' in in_dict else None
         has_kp3d = in_dict['has_pose_3d'].byte() if 'has_pose_3d' in in_dict else None  # flag that indicates whether 3D pose is valid
@@ -159,15 +162,12 @@ class DaNet(nn.Module):
             target = torch.cat([target_cam, gt_betas, gt_rotmat], dim=1)
             uv_image_gt = torch.zeros((batch_size, 3, cfg.DANET.HEATMAP_SIZE, cfg.DANET.HEATMAP_SIZE)).to(image.device)
             if torch.sum(has_iuv) > 0:
-                uv_image_gt[has_iuv] = self.iuv2smpl.verts2uvimg(target_verts[has_iuv], cam=target_cam[has_iuv])  # [B, 3, 56, 56]
+                uv_image_gt[has_iuv] = self.iuv_renderer.verts2uvimg(target_verts[has_iuv], cam=target_cam[has_iuv])  # [B, 3, 56, 56]
         else:
             target = None
 
         # target_iuv_dp = in_dict['target_iuv_dp'] if 'target_iuv_dp' in in_dict else None
         target_iuv_dp = in_dict['dp_dict'] if 'dp_dict' in in_dict else None
-
-        if 'target_kps_coco' in in_dict:
-            target_kps = in_dict['target_kps_coco']
 
         return_dict = {}
         return_dict['losses'] = {}
@@ -177,26 +177,26 @@ class DaNet(nn.Module):
 
         if cfg.DANET.INPUT_MODE in ['iuv_gt']:
             if cfg.DANET.DECOMPOSED:
-                uv_return_dict = self.img2iuv(image, uv_image_gt, target_smpl_kps, pretrained=in_dict['pretrain_mode'], uvia_dp_gt=target_iuv_dp)
+                uv_return_dict = self.img2iuv(image, uv_image_gt, target_smpl_kps, uvia_dp_gt=target_iuv_dp)
                 uv_return_dict['uvia_pred'] = iuv_img2map(uv_image_gt)
             else:
                 uv_return_dict = {}
                 uv_return_dict['uvia_pred'] = iuv_img2map(uv_image_gt)
         elif cfg.DANET.INPUT_MODE in ['iuv_gt_feat']:
-            uv_return_dict = self.img2iuv(image, uv_image_gt, target_smpl_kps, pretrained=in_dict['pretrain_mode'], uvia_dp_gt=target_iuv_dp)
+            uv_return_dict = self.img2iuv(image, uv_image_gt, target_smpl_kps, uvia_dp_gt=target_iuv_dp)
             uv_return_dict['uvia_pred'] = iuv_img2map(uv_image_gt)
         elif cfg.DANET.INPUT_MODE in ['feat']:
-            uv_return_dict = self.img2iuv(image, None, target_smpl_kps, pretrained=in_dict['pretrain_mode'], uvia_dp_gt=target_iuv_dp)
+            uv_return_dict = self.img2iuv(image, None, target_smpl_kps, uvia_dp_gt=target_iuv_dp)
         else:
-            uv_return_dict = self.img2iuv(image, uv_image_gt, target_smpl_kps, pretrained=in_dict['pretrain_mode'], uvia_dp_gt=target_iuv_dp, has_iuv=has_iuv, has_dp=has_dp)
+            uv_return_dict = self.img2iuv(image, uv_image_gt, target_smpl_kps, uvia_dp_gt=target_iuv_dp, has_iuv=has_iuv, has_dp=has_dp)
 
         u_pred, v_pred, index_pred, ann_pred = uv_return_dict['uvia_pred']
-        if self.training and cfg.DANET.PART_IUV_ZERO > 0:
+        if self.training and cfg.DANET.PARTDROP_RATE > 0:
             zero_idxs = []
             for bs in range(u_pred.shape[0]):
-                zero_idxs.append([int(i) + 1 for i in torch.nonzero(torch.rand(24) < cfg.DANET.PART_IUV_ZERO)])
+                zero_idxs.append([int(i) + 1 for i in torch.nonzero(torch.rand(24) < cfg.DANET.PARTDROP_RATE)])
 
-        if self.training and cfg.DANET.PART_IUV_ZERO > 0:
+        if self.training and cfg.DANET.PARTDROP_RATE > 0:
             for bs in range(len(zero_idxs)):
                 u_pred[bs, zero_idxs[bs]] *= 0
                 v_pred[bs, zero_idxs[bs]] *= 0
@@ -239,7 +239,6 @@ class DaNet(nn.Module):
                         else:
                             p_uvi_vis_i = iuv_map2img(p_u_vis.detach(), p_v_vis.detach(), p_i_vis.detach(),
                                                          ind_mapping=[0] + self.img2iuv.dp2smpl_mapping[i])
-                        # p_uvi_vis_i = uvmap_vis(p_u_vis.detach(), p_v_vis.detach(), p_i_vis.detach(), self.img2iuv.dp2smpl_mapping[i])
                         p_uvi_vis.append(p_uvi_vis_i)
                     return_dict['visualization'][key] = torch.cat(p_uvi_vis, dim=0)
 
@@ -249,7 +248,7 @@ class DaNet(nn.Module):
 
             if cfg.DANET.INPUT_MODE in ['iuv_gt', 'iuv_gt_feat'] and 'part_iuv_gt' in uv_return_dict:
                 part_iuv_map = uv_return_dict['part_iuv_gt']
-                if self.training and cfg.DANET.PART_IUV_ZERO > 0:
+                if self.training and cfg.DANET.PARTDROP_RATE > 0:
                     for bs in range(len(zero_idxs)):
                         zero_channel = []
                         for zero_i in zero_idxs[bs]:
@@ -263,7 +262,7 @@ class DaNet(nn.Module):
                 part_index_map = part_iuv_map[:, :, 2]
             elif 'part_iuv_pred' in uv_return_dict:
                 part_iuv_pred = uv_return_dict['part_iuv_pred']
-                if self.training and cfg.DANET.PART_IUV_ZERO > 0:
+                if self.training and cfg.DANET.PARTDROP_RATE > 0:
                     for bs in range(len(zero_idxs)):
                         zero_channel = []
                         for zero_i in zero_idxs[bs]:
@@ -323,7 +322,6 @@ class DaNet(nn.Module):
                                                  'has_smpl': valid_fit
                                                   })
             elif cfg.DANET.INPUT_MODE == 'seg':
-                # REMOVE _.detach
                 smpl_return_dict = self.iuv2smpl({'iuv_map': {'index': index_pred_cl},
                                                  'part_iuv_map': {'pindex': part_index_map},
                                                  'target': target,
@@ -348,7 +346,6 @@ class DaNet(nn.Module):
                     else:
                         p_uvi_vis_i = iuv_map2img(p_u_vis.detach(), p_v_vis.detach(), p_i_vis.detach(),
                                                      ind_mapping=[0] + self.img2iuv.dp2smpl_mapping[i])
-                    # p_uvi_vis_i = uvmap_vis(p_u_vis.detach(), p_v_vis.detach(), p_i_vis.detach(), self.img2iuv.dp2smpl_mapping[i])
                     p_uvi_vis.append(p_uvi_vis_i)
                 return_dict['visualization']['part_uvi_pred'] = torch.cat(p_uvi_vis, dim=0)
 
@@ -358,7 +355,7 @@ class DaNet(nn.Module):
             if not in_dict['pretrain_mode']:
                 return_dict[key_name].update(smpl_return_dict[key_name])
 
-        # pytorch0.4 bug on gathering scalar(0-dim) tensors
+        # handle bug on gathering scalar(0-dim) tensors
         for k, v in return_dict['losses'].items():
             if len(v.shape) == 0:
                 return_dict['losses'][k] = v.unsqueeze(0)

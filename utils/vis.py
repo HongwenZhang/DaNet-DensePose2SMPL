@@ -39,7 +39,6 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from mpl_toolkits.mplot3d import Axes3D
-from utils.renderer import opendr_render
 from skimage.transform import resize
 from utils.iuvmap import iuv_map2img
 
@@ -551,51 +550,3 @@ def set_axes_equal(ax):
     ax.set_xlim3d([x_middle - plot_radius, x_middle + plot_radius])
     ax.set_ylim3d([y_middle - plot_radius, y_middle + plot_radius])
     ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
-
-
-def vis_smpl_iuv(image, cam_pred, vert_pred, face, pred_uv, vert_errors_batch, image_name, save_path, opt):
-
-    # save_path = os.path.join('./notebooks/output/demo_results-wild', ids[f_id][0])
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
-    dr_render = opendr_render(ratio=opt.ratio, color=opt.color)
-
-    focal_length = 5000.
-    orig_size = 224.
-
-    if pred_uv is not None:
-        iuv_img = iuv_map2img(*pred_uv)
-
-    for draw_i in range(len(cam_pred)):
-        err_val = '{:06d}_'.format(int(10 * vert_errors_batch[draw_i]))
-        draw_name = err_val + image_name[draw_i]
-        # cam_pred_opendr = cam_pred[draw_i]
-        # cam_pred_opendr[:, 2] = - cam_pred_opendr[:, 2]
-        K = np.array([[focal_length, 0., orig_size / 2.],
-                      [0., focal_length, orig_size / 2.],
-                      [0., 0., 1.]])
-
-        img_orig, img_resized, img_smpl, render_smpl_rgba = dr_render.render(image[draw_i],
-                                                                             cam_pred[draw_i], K,
-                                                                             vert_pred[draw_i],
-                                                                             face,
-                                                                             draw_name[:-4])
-
-        ones_img = np.ones(img_smpl.shape[:2]) * 255
-        ones_img = ones_img[:, :, None]
-        img_smpl_rgba = np.concatenate((img_smpl * 255, ones_img), axis=2)
-        img_resized_rgba = np.concatenate((img_resized * 255, ones_img), axis=2)
-
-        render_img = np.concatenate((img_resized_rgba, img_smpl_rgba, render_smpl_rgba * 255), axis=1)
-        render_img[render_img < 0] = 0
-        render_img[render_img > 255] = 255
-        matplotlib.image.imsave(os.path.join(save_path, draw_name[:-4] + '.png'), render_img.astype(np.uint8))
-
-        if pred_uv is not None:
-            # estimated global IUV
-            global_iuv = iuv_img[draw_i].cpu().numpy()
-            global_iuv = np.transpose(global_iuv, (1, 2, 0))
-            global_iuv = resize(global_iuv, img_resized.shape[:2])
-            global_iuv[global_iuv > 1] = 1
-            global_iuv[global_iuv < 0] = 0
-            matplotlib.image.imsave(os.path.join(save_path, 'pred_uv_' + draw_name[:-4] + '.png'), global_iuv)

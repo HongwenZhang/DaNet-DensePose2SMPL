@@ -4,15 +4,14 @@ from models.core.config import cfg
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-import neural_renderer as nr
-from neural_renderer.projection import projection as nr_projection
 
-from utils.densepose_methods import DensePoseMethods
 from models.module.GCN import GCN
 from utils.graph import Graph, normalize_digraph, normalize_undigraph
 from utils.iuvmap import iuv_img2map, iuv_map2img
 from utils.geometry import rot6d_to_rotmat
 from utils.smpl_utlis import smpl_structure
+from utils.geometry import perspective_projection
+
 
 from models.smpl import SMPL
 from models.module.res_module import SmplResNet, LimbResLayers
@@ -37,15 +36,18 @@ def check_inference(net_func):
 
 
 class SMPL_Regressor(nn.Module):
-    def __init__(self, options, as_renderer_only=False, orig_size=224, feat_in_dim=None, smpl_mean_params=None):
+    def __init__(self, options, orig_size=224, feat_in_dim=None, smpl_mean_params=None, pretrained=True):
         super(SMPL_Regressor, self).__init__()
 
         self.mapping_to_detectron = None
         self.orphans_in_detectron = None
-        self.orig_size = orig_size
-        self.focal_length = 5000.
 
+        self.focal_length = 5000.
         self.options = options
+
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+        self.orig_size = orig_size
 
         mean_params = np.load(smpl_mean_params)
         init_pose_6d = torch.from_numpy(mean_params['pose'][:]).unsqueeze(0)
@@ -59,68 +61,22 @@ class SMPL_Regressor(nn.Module):
 
         init_params = (init_cam, init_shape, init_pose)
 
-        K = np.array([[self.focal_length, 0., self.orig_size / 2.],
-                      [0., self.focal_length, self.orig_size / 2.],
-                      [0., 0., 1.]])
-
-        R = np.array([[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]])
-
-        t = np.array([0, 0, 5])
-
-        if self.orig_size != 224:
-            rander_scale = self.orig_size / float(224)
-            K[0, 0] *= rander_scale
-            K[1, 1] *= rander_scale
-            K[0, 2] *= rander_scale
-            K[1, 2] *= rander_scale
-
-        self.K = torch.FloatTensor(K[None, :, :])
-        self.R = torch.FloatTensor(R[None, :, :])
-        self.t = torch.FloatTensor(t[None, None, :])
-
         self.smpl = SMPL(path_config.SMPL_MODEL_DIR, batch_size=self.options.batch_size, create_transl=False)
 
-        self.coco_plus2coco = [14, 15, 16, 17, 18, 9, 8, 10, 7, 11, 6, 3, 2, 4, 1, 5, 0]
+        if cfg.DANET.DECOMPOSED:
+            print('using decomposed predictor.')
+            self.smpl_para_Outs = DecomposedPredictor(feat_in_dim, init_params, pretrained)
+        else:
+            print('using global predictor.')
+            self.smpl_para_Outs = GlobalPredictor(feat_in_dim, pretrained)
 
-        DP = DensePoseMethods()
-
-        vert_mapping = DP.All_vertices.astype('int64') - 1
-        self.vert_mapping = torch.from_numpy(vert_mapping)
-
-        faces = DP.FacesDensePose
-        faces = faces[None, :, :]
-        self.faces = torch.from_numpy(faces.astype(np.int32))
-
-        num_part = float(np.max(DP.FaceIndices))
-        textures = np.array(
-            [(DP.FaceIndices[i] / num_part, np.mean(DP.U_norm[v]), np.mean(DP.V_norm[v])) for i, v in
-             enumerate(DP.FacesDensePose)])
-
-        self.VertIndices = {}
-        self.VertU = {}
-        self.VertV = {}
-        self.VertUV = {}
-        for i in range(24):
-            self.VertIndices[i] = np.int32(np.unique(DP.FacesDensePose[DP.FaceIndices == i + 1]))
-            self.VertU[i] = DP.U_norm[self.VertIndices[i]]
-            self.VertV[i] = DP.V_norm[self.VertIndices[i]]
-            self.VertUV[i] = np.vstack((self.VertU[i], self.VertV[i])).T
-
-        textures = textures[None, :, None, None, None, :]
-        self.textures = torch.from_numpy(textures.astype(np.float32))
-
-        self.renderer = nr.Renderer(camera_mode='projection', image_size=cfg.DANET.HEATMAP_SIZE, fill_back=False, anti_aliasing=False,
-                                    dist_coeffs=torch.FloatTensor([[0.] * 5]), orig_size=self.orig_size)
-        self.renderer.light_intensity_directional = 0.0
-        self.renderer.light_intensity_ambient = 1.0
-
-        if not as_renderer_only:
-            if cfg.DANET.DECOMPOSED:
-                print('using decomposed predictor.')
-                self.smpl_para_Outs = DecomposedPredictor(feat_in_dim, init_params)
-            else:
-                print('using global predictor.')
-                self.smpl_para_Outs = GlobalPredictor(feat_in_dim)
+        # Per-vertex loss on the shape
+        self.criterion_shape = nn.L1Loss().to(self.device)
+        # Keypoint (2D and 3D) loss
+        # No reduction because confidence weighting needs to be applied
+        self.criterion_keypoints = nn.MSELoss(reduction='none').to(self.device)
+        # Loss for SMPL parameter regression
+        self.criterion_regr = nn.MSELoss().to(self.device)
 
     @check_inference
     def smpl_infer_net(self, in_dict):
@@ -140,13 +96,7 @@ class SMPL_Regressor(nn.Module):
     def _forward(self, in_dict):
         iuv_map = in_dict['iuv_map']
         part_iuv_map = in_dict['part_iuv_map'] if 'part_iuv_map' in in_dict else None
-        target = in_dict['target'] if 'target' in in_dict else None
-        target_kps = in_dict['target_kps'] if 'target_kps' in in_dict else None
-        target_kps3d = in_dict['target_kps3d'] if 'target_kps3d' in in_dict else None
-        has_kp3d = in_dict['has_kp3d'] if 'has_kp3d' in in_dict else None
-        target_verts = in_dict['target_verts'] if 'target_verts' in in_dict else None
         infer_mode = in_dict['infer_mode'] if 'infer_mode' in in_dict else False
-        has_smpl = in_dict['has_smpl'] if 'has_smpl' in in_dict else None
 
         if cfg.DANET.INPUT_MODE in ['feat', 'iuv_feat', 'iuv_gt_feat']:
             device_id = iuv_map['feat'].get_device()
@@ -168,79 +118,109 @@ class SMPL_Regressor(nn.Module):
         if infer_mode:
             return smpl_out_dict
 
-        # Training
         para = smpl_out_dict['para']
 
         for k, v in smpl_out_dict['visualization'].items():
             return_dict['visualization'][k] = v
 
-        if cfg.DANET.ORTHOGONAL_WEIGHTS > 0:
-            loss_orth = self.orthogonal_loss(para)
-            loss_orth *= cfg.DANET.ORTHOGONAL_WEIGHTS
-            return_dict['losses']['Rs_orth'] = loss_orth
-
         return_dict['prediction']['cam'] = para[:, :3]
         return_dict['prediction']['shape'] = para[:, 3:13]
         return_dict['prediction']['pose'] = para[:, 13:].reshape(-1, 24, 3, 3).contiguous()
 
-        if target is not None:
-            if cfg.DANET.POSE_PARA_WEIGHTS > 0:
-                loss_para_global = self.smpl_para_losses(para[:, :13], target[:, :13], has_smpl)
-                loss_para_global *= cfg.DANET.SHAPE_PARA_WEIGHTS
-                return_dict['losses']['smpl_shape'] = loss_para_global
+        # losses for Training
+        if self.training:
+            batch_size = len(para)
 
-                loss_para_pose = self.smpl_para_losses(para[:, 13:], target[:, 13:], has_smpl)
-                loss_para_pose *= cfg.DANET.POSE_PARA_WEIGHTS
-                return_dict['losses']['smpl_pose'] = loss_para_pose
+            target = in_dict['target']
+            target_kps = in_dict['target_kps']
+            target_kps3d = in_dict['target_kps3d']
+            target_vertices = in_dict['target_verts']
+            has_kp3d = in_dict['has_kp3d']
+            has_smpl = in_dict['has_smpl']
 
-                if 'smpl_pose' in smpl_out_dict:
-                    for stack_i in range(len(smpl_out_dict['smpl_pose'])):
-                        loss_rot = self.smpl_para_losses(smpl_out_dict['smpl_pose'][stack_i], target[:, 13:], has_smpl)
-                        loss_rot *= cfg.DANET.POSE_PARA_WEIGHTS
-                        return_dict['losses']['smpl_rotation'+str(stack_i)] = loss_rot
+            if cfg.DANET.ORTHOGONAL_WEIGHTS > 0:
+                loss_orth = self.orthogonal_loss(para)
+                loss_orth *= cfg.DANET.ORTHOGONAL_WEIGHTS
+                return_dict['losses']['Rs_orth'] = loss_orth
+                return_dict['metrics']['orth'] = loss_orth.detach()
 
-            if cfg.DANET.DECOMPOSED and ('smpl_coord' in smpl_out_dict) and cfg.DANET.SMPL_KPS_WEIGHTS > 0:
+            if len(smpl_out_dict['joint_rotation']) > 0:
+                for stack_i in range(len(smpl_out_dict['joint_rotation'])):
+                    if torch.sum(has_smpl) > 0:
+                        loss_rot = self.criterion_regr(smpl_out_dict['joint_rotation'][stack_i][has_smpl==1], target[:, 13:][has_smpl==1])
+                        loss_rot *= cfg.DANET.SMPL_POSE_WEIGHTS
+                    else:
+                        loss_rot = torch.zeros(1).to(pred.device)
+
+                    return_dict['losses']['joint_rotation'+str(stack_i)] = loss_rot
+
+            if cfg.DANET.DECOMPOSED and ('joint_position' in smpl_out_dict) and cfg.DANET.JOINT_POSITION_WEIGHTS > 0:
                 gt_beta = target[:, 3:13].contiguous().detach()
                 gt_Rs = target[:, 13:].contiguous().view(-1, 24, 3, 3).detach()
                 smpl_pts = self.smpl(betas=gt_beta, body_pose=gt_Rs[:, 1:],
                                      global_orient=gt_Rs[:, 0].unsqueeze(1), pose2rot=False)
-                # smpl_pts = self.smpl(gt_beta, Rs=gt_Rs, get_skin=False, add_smpl_joint=True)
                 gt_smpl_coord = smpl_pts.smpl_joints
-                for stack_i in range(len(smpl_out_dict['smpl_coord'])):
-                    if torch.sum(has_smpl) > 0:
-                        loss_smpl_coord = F.l1_loss(smpl_out_dict['smpl_coord'][stack_i][has_smpl==1], gt_smpl_coord[has_smpl==1],
-                                                    size_average=False) / gt_smpl_coord[has_smpl==1].size(0)
-                        loss_smpl_coord *= cfg.DANET.SMPL_KPS_WEIGHTS
-                    else:
-                        loss_smpl_coord = torch.zeros(1).to(para.device)
-                    return_dict['losses']['smpl_position'+str(stack_i)] = loss_smpl_coord
+                for stack_i in range(len(smpl_out_dict['joint_position'])):
+                    loss_pos = self.l1_losses(smpl_out_dict['joint_position'][stack_i], gt_smpl_coord, has_smpl)
+                    loss_pos *= cfg.DANET.JOINT_POSITION_WEIGHTS
+                    return_dict['losses']['joint_position'+str(stack_i)] = loss_pos
 
-        if target_kps is not None:
-            if isinstance(target_kps, np.ndarray):
-                target_kps = torch.from_numpy(target_kps).cuda(device_id)
-            target_kps_vis = target_kps[:, :, -1].unsqueeze(-1).expand(-1, -1, 2)
+            pred_camera = para[:, :3]
+            pred_betas = para[:, 3:13]
+            pred_rotmat = para[:, 13:].reshape(-1, 24, 3, 3).contiguous()
 
-            cam_gt = target[:, :3].detach() if target is not None else None
-            shape_gt = target[:, 3:13].detach() if target is not None else None
-            pose_gt = target[:, 13:].detach() if target is not None else None
-            loss_proj_kps, loss_kps3d, loss_verts, proj_kps = self.projection_losses(para, target_kps, target_kps_vis, target_kps3d[:, :, :3], has_kp3d, target_verts, cam_gt=cam_gt, shape_gt=shape_gt, pose_gt=pose_gt)
+            gt_camera = target[:, :3]
+            gt_betas = target[:, 3:13]
+            gt_rotmat = target[:, 13:]
 
-            if cfg.DANET.PROJ_KPS_WEIGHTS > 0:
-                loss_proj_kps *= cfg.DANET.PROJ_KPS_WEIGHTS
-                return_dict['losses']['proj_kps'] = loss_proj_kps
+            pred_output = self.smpl(betas=pred_betas, body_pose=pred_rotmat[:,1:], global_orient=pred_rotmat[:,0].unsqueeze(1), pose2rot=False)
+            pred_vertices = pred_output.vertices
+            pred_joints = pred_output.joints
 
-            if cfg.DANET.KPS3D_WEIGHTS > 0 and loss_kps3d is not None:
-                loss_kps3d *= cfg.DANET.KPS3D_WEIGHTS
-                return_dict['losses']['kps_3d'] = loss_kps3d
+            # Convert Weak Perspective Camera [s, tx, ty] to camera translation [tx, ty, tz] in 3D given the bounding box size
+            # This camera translation can be used in a full perspective projection
+            pred_cam_t = torch.stack([pred_camera[:,1],
+                                        pred_camera[:,2],
+                                        2*self.focal_length/(cfg.DANET.INIMG_SIZE * pred_camera[:,0] +1e-9)],dim=-1)
 
-            if loss_verts is not None and cfg.DANET.VERTS_WEIGHTS > 0:
-                loss_verts *= cfg.DANET.VERTS_WEIGHTS
-                return_dict['losses']['smpl_verts'] = loss_verts
+            camera_center = torch.zeros(batch_size, 2, device=self.device)
+            pred_keypoints_2d = perspective_projection(pred_joints,
+                                                        rotation=torch.eye(3, device=self.device).unsqueeze(0).expand(batch_size, -1, -1),
+                                                        translation=pred_cam_t,
+                                                        focal_length=self.focal_length,
+                                                        camera_center=camera_center)
+            # Normalize keypoints to [-1,1]
+            pred_keypoints_2d = pred_keypoints_2d / (cfg.DANET.INIMG_SIZE / 2.)
 
-        if cfg.DANET.ORTHOGONAL_WEIGHTS > 0:
-            return_dict['metrics']['none'] = loss_orth.detach()
+            # Compute loss on predicted camera
+            loss_cam = self.l1_losses(pred_camera, gt_camera, has_smpl)
 
-        # pytorch0.4 bug on gathering scalar(0-dim) tensors
+            # Compute loss on SMPL parameters
+            loss_regr_pose, loss_regr_betas = self.smpl_losses(pred_rotmat, pred_betas, gt_rotmat, gt_betas, has_smpl)
+
+            # Compute 2D reprojection loss for the keypoints
+            loss_keypoints = self.keypoint_loss(pred_keypoints_2d, target_kps,
+                                                self.options.openpose_train_weight,
+                                                self.options.gt_train_weight)
+
+            # Compute 3D keypoint loss
+            loss_keypoints_3d = self.keypoint_3d_loss(pred_joints, target_kps3d, has_kp3d)
+
+            # Per-vertex loss for the shape
+            loss_verts = self.shape_loss(pred_vertices, target_vertices, has_smpl)
+
+            # The last component is a loss that forces the network to predict positive depth values
+            return_dict['losses'].update({'keypoints_2d': loss_keypoints * cfg.DANET.PROJ_KPS_WEIGHTS,
+                                    'keypoints_3d': loss_keypoints_3d * cfg.DANET.KPS3D_WEIGHTS,
+                                    'smpl_pose': loss_regr_pose * cfg.DANET.SMPL_POSE_WEIGHTS,
+                                    'smpl_betas': loss_regr_betas * cfg.DANET.SMPL_BETAS_WEIGHTS,
+                                    'smpl_verts': loss_verts * cfg.DANET.VERTS_WEIGHTS,
+                                    'cam': ((torch.exp(-pred_camera[:,0]*10)) ** 2 ).mean()})
+
+            return_dict['prediction']['vertices'] = pred_vertices
+            return_dict['prediction']['cam_t'] = pred_cam_t
+
+        # handle bug on gathering scalar(0-dim) tensors
         for k, v in return_dict['losses'].items():
             if len(v.shape) == 0:
                 return_dict['losses'][k] = v.unsqueeze(0)
@@ -250,14 +230,11 @@ class SMPL_Regressor(nn.Module):
 
         return return_dict
 
-    def smpl_para_losses(self, pred, target, has_smpl):
-
-        if torch.sum(has_smpl) > 0:
-            para_loss = F.l1_loss(pred[has_smpl==1], target[has_smpl==1])
+    def l1_losses(self, pred, target, mask):
+        if torch.sum(mask) > 0:
+            para_loss = F.l1_loss(pred[mask==1], target[mask==1], size_average=False) / target[mask==1].size(0)
         else:
             para_loss = torch.zeros(1).to(pred.device)
-
-        # return F.smooth_l1_loss(pred, target)
         return para_loss
 
     def orthogonal_loss(self, para):
@@ -268,139 +245,57 @@ class SMPL_Regressor(nn.Module):
         tensor_eyes = torch.eye(3).expand_as(Rs_mm).cuda(device_id)
         return F.mse_loss(Rs_mm, tensor_eyes)
 
-    def projection_losses(self, para, target_kps, target_kps_vis=None, target_kps3d=None, has_kp3d=None, target_verts=None, cam_gt=None, cam_t_gt=None, shape_gt=None, pose_gt=None):
-        device_id = para.get_device()
+    def keypoint_loss(self, pred_keypoints_2d, gt_keypoints_2d, openpose_weight, gt_weight):
+        """ Compute 2D reprojection loss on the keypoints.
+        The loss is weighted by the confidence.
+        The available keypoints are different for each dataset.
+        """
+        conf = gt_keypoints_2d[:, :, -1].unsqueeze(-1).clone()
+        conf[:, :25] *= openpose_weight
+        conf[:, 25:] *= gt_weight
+        loss = (conf * self.criterion_keypoints(pred_keypoints_2d, gt_keypoints_2d[:, :, :-1])).mean()
+        return loss
 
-        batch_size = para.size(0)
-
-        def weighted_l1_loss(input, target, weights=1, size_average=True):
-            out = torch.abs(input - target)
-            out = out * weights
-            if size_average:
-                return out.sum() / len(input)
-            else:
-                return out.sum()
-
-        if cfg.DANET.GTCAM_FOR_REPJ and cam_gt is not None:
-            cam = cam_gt
+    def keypoint_3d_loss(self, pred_keypoints_3d, gt_keypoints_3d, has_pose_3d):
+        """Compute 3D keypoint loss for the examples that 3D keypoint annotations are available.
+        The loss is weighted by the confidence.
+        """
+        pred_keypoints_3d = pred_keypoints_3d[:, 25:, :]
+        conf = gt_keypoints_3d[:, :, -1].unsqueeze(-1).clone()
+        gt_keypoints_3d = gt_keypoints_3d[:, :, :-1].clone()
+        gt_keypoints_3d = gt_keypoints_3d[has_pose_3d == 1]
+        conf = conf[has_pose_3d == 1]
+        pred_keypoints_3d = pred_keypoints_3d[has_pose_3d == 1]
+        if len(gt_keypoints_3d) > 0:
+            gt_pelvis = (gt_keypoints_3d[:, 2,:] + gt_keypoints_3d[:, 3,:]) / 2
+            gt_keypoints_3d = gt_keypoints_3d - gt_pelvis[:, None, :]
+            pred_pelvis = (pred_keypoints_3d[:, 2,:] + pred_keypoints_3d[:, 3,:]) / 2
+            pred_keypoints_3d = pred_keypoints_3d - pred_pelvis[:, None, :]
+            return (conf * self.criterion_keypoints(pred_keypoints_3d, gt_keypoints_3d)).mean()
         else:
-            cam = para[:, 0:3].contiguous()
+            return torch.FloatTensor(1).fill_(0.).to(self.device)
 
-        if cfg.DANET.GTSHAPE_FOR_REPJ and shape_gt is not None:
-            beta_gt = shape_gt
-            Rs_gt = pose_gt.view(-1, 24, 3, 3)
-
-        beta = para[:, 3:13].contiguous()
-        Rs = para[:, 13:].contiguous().view(-1, 24, 3, 3)
-
-        M = cfg.DANET.HEATMAP_SIZE
-
-        K, R, t = self.camera_matrix(cam)
-        dist_coeffs = torch.FloatTensor([[0.] * 5]).cuda(device_id)
-
-        if cfg.DANET.GTSHAPE_FOR_REPJ and shape_gt is not None and pose_gt is not None:
-            ps_dict = self.smpl2kps(beta_gt, Rs, K, R, t, dist_coeffs)
-            verts_pose, proj_kps = ps_dict['vertices'], ps_dict['proj_kps']
-            ps_dict_shape = self.smpl2kps(beta, Rs_gt, K, R, t, dist_coeffs)
-            verts_shape = ps_dict_shape['vertices']
+    def shape_loss(self, pred_vertices, gt_vertices, has_smpl):
+        """Compute per-vertex loss on the shape for the examples that SMPL annotations are available."""
+        pred_vertices_with_shape = pred_vertices[has_smpl == 1]
+        gt_vertices_with_shape = gt_vertices[has_smpl == 1]
+        if len(gt_vertices_with_shape) > 0:
+            return self.criterion_shape(pred_vertices_with_shape, gt_vertices_with_shape)
         else:
-            ps_dict = self.smpl2kps(beta, Rs, K, R, t, dist_coeffs)
-            verts, proj_kps = ps_dict['vertices'], ps_dict['proj_kps']
+            return torch.FloatTensor(1).fill_(0.).to(self.device)
 
-        if target_kps.size(1) == 14:
-            proj_kps_pred = proj_kps[:, :14, :]
-        elif target_kps.size(1) == 17:
-            proj_kps_pred = proj_kps[:, self.coco_plus2coco, :]
-
-        if target_kps3d is not None and cfg.DANET.KPS3D_WEIGHTS > 0 and torch.sum(has_kp3d==1) > 0:
-            kps3d_from_smpl = ps_dict['cocoplus_kps'][:, :14]
-            target_kps3d -= torch.mean(target_kps3d[:, [2, 3]], dim=1).unsqueeze(1)
-            if has_kp3d is None:
-                loss_kps3d = weighted_l1_loss(kps3d_from_smpl, target_kps3d)
-            else:
-                loss_kps3d = weighted_l1_loss(kps3d_from_smpl[has_kp3d==1], target_kps3d[has_kp3d==1])
+    def smpl_losses(self, pred_rotmat, pred_betas, gt_rotmat, gt_betas, has_smpl):
+        pred_rotmat_valid = pred_rotmat[has_smpl == 1]
+        gt_rotmat_valid = gt_rotmat.view(-1, 24, 3, 3)[has_smpl == 1]
+        pred_betas_valid = pred_betas[has_smpl == 1]
+        gt_betas_valid = gt_betas[has_smpl == 1]
+        if len(pred_rotmat_valid) > 0:
+            loss_regr_pose = self.criterion_regr(pred_rotmat_valid, gt_rotmat_valid)
+            loss_regr_betas = self.criterion_regr(pred_betas_valid, gt_betas_valid)
         else:
-            loss_kps3d = None
-
-        if target_verts is not None and cfg.DANET.VERTS_WEIGHTS > 0:
-            if cfg.DANET.GTSHAPE_FOR_REPJ:
-                loss_verts = F.mse_loss(verts_shape, target_verts) + F.mse_loss(verts_pose, target_verts)
-            else:
-                loss_verts = F.mse_loss(verts, target_verts)
-        else:
-            loss_verts = None
-
-        if target_kps_vis is None:
-            target_kps_vis = torch.ones(1).cuda(device_id).expand_as(target_kps[:, :, :2])
-
-        loss_proj_kps = weighted_l1_loss(proj_kps_pred[:, :, :2] / float(M),
-                                         target_kps[:, :, :2] / float(cfg.DANET.INIMG_SIZE), target_kps_vis)
-
-        return loss_proj_kps, loss_kps3d, loss_verts, proj_kps
-
-    def smpl2kps(self, beta, Rs, K, R, t, dist_coeffs, add_smpl_joint=False, theta=None, orig_size=None, selected_ind=None):
-        return_dict = {}
-        if orig_size is None:
-            orig_size = self.orig_size
-        if theta is None:
-            smpl_pts = self.smpl(betas=beta, body_pose=Rs[:, 1:],
-                                 global_orient=Rs[:, 0].unsqueeze(1), pose2rot=False)
-
-        verts = smpl_pts.vertices
-        # kps = smpl_pts.cocoplus
-        kps = smpl_pts.joints_J19
-        return_dict['cocoplus_kps'] = kps
-        if add_smpl_joint:
-            joint3d_smpl = smpl_pts.smpl_joints
-        else:
-            joint3d_smpl = None
-        if selected_ind is not None:
-            kps = kps[:, selected_ind]
-        proj_kps = nr_projection(kps, K=K, R=R, t=t, dist_coeffs=dist_coeffs, orig_size=orig_size)
-        proj_kps[:, :, 1] *= -1
-        proj_kps[:, :, :2] *= cfg.DANET.HEATMAP_SIZE / 2.
-        proj_kps[:, :, :2] += cfg.DANET.HEATMAP_SIZE / 2.
-
-        return_dict['vertices'] = verts
-        return_dict['proj_kps'] = proj_kps
-        return_dict['joint3d_smpl'] = joint3d_smpl
-
-        return return_dict
-
-    def verts2uvimg(self, verts, cam, f=None, tran=None):
-        batch_size = verts.size(0)
-
-        K, R, t = self.camera_matrix(cam)
-
-        if self.vert_mapping is None:
-            vertices = verts
-        else:
-            vertices = verts[:, self.vert_mapping, :]
-
-        iuv_image = self.renderer(vertices, self.faces.to(verts.device).expand(batch_size, -1, -1),
-                               self.textures.to(verts.device).expand(batch_size, -1, -1, -1, -1, -1).clone(),
-                               K=K, R=R, t=t,
-                               mode='rgb',
-                               dist_coeffs=torch.FloatTensor([[0.] * 5]).to(verts.device))
-
-        return iuv_image
-
-    def camera_matrix(self, cam):
-        batch_size = cam.size(0)
-
-        K = self.K.repeat(batch_size, 1, 1)
-        R = self.R.repeat(batch_size, 1, 1)
-        # t = self.t.repeat(batch_size, 1, 1)
-        t = torch.stack([cam[:, 1], cam[:, 2], 2 * self.focal_length/(self.orig_size * cam[:, 0] + 1e-9)], dim=-1)
-        t = t.unsqueeze(1)
-
-        if cam.is_cuda:
-            device_id = cam.get_device()
-            K = K.cuda(device_id)
-            R = R.cuda(device_id)
-            t = t.cuda(device_id)
-
-        return K, R, t
+            loss_regr_pose = torch.FloatTensor(1).fill_(0.).to(self.device)
+            loss_regr_betas = torch.FloatTensor(1).fill_(0.).to(self.device)
+        return loss_regr_pose, loss_regr_betas
 
     # @property
     def detectron_weight_mapping(self):
@@ -424,7 +319,7 @@ class SMPL_Regressor(nn.Module):
         return self.mapping_to_detectron, self.orphans_in_detectron
 
 class GlobalPredictor(nn.Module):
-    def __init__(self, feat_in_dim=None):
+    def __init__(self, feat_in_dim=None, pretrained=True):
         super(GlobalPredictor, self).__init__()
 
         # For cache
@@ -445,27 +340,20 @@ class GlobalPredictor(nn.Module):
             in_channels = 3 * 25 + self.add_feat_ch
         elif cfg.DANET.INPUT_MODE == 'feat':
             print('input mode: feat')
-            # self.add_feat_ch = 48
             in_channels = self.add_feat_ch
         elif cfg.DANET.INPUT_MODE == 'seg':
             print('input mode: segmentation')
             in_channels = 25
 
         num_layers = cfg.DANET.GLO_NUM_LAYERS
-        # num_layers = 50
         self.Conv_Body = nn.Sequential(nn.Conv2d(in_channels, 64, kernel_size=1, bias=False),
                                        nn.BatchNorm2d(64),
                                        nn.ReLU(True),
                                        SmplResNet(resnet_nums=num_layers, num_classes=229, in_channels=64)
                                        )
 
-        if not cfg.DANET.EVAL_MODE:
-            if cfg.DANET.GLO_NUM_LAYERS == 18:
-                self.Conv_Body[3].init_weights('data/pretrained_model/resnet18-5c106cde.pth')
-            elif cfg.DANET.GLO_NUM_LAYERS == 50:
-                self.Conv_Body[3].init_weights('data/pretrained_model/resnet50-19c8e357.pth')
-            elif cfg.DANET.GLO_NUM_LAYERS == 101:
-                self.Conv_Body[3].init_weights('data/pretrained_model/resnet101-5d3b4d8f.pth')
+        if pretrained:
+            self.Conv_Body[3].init_weights(cfg.MSRES_MODEL[f'PRETRAINED_{cfg.DANET.GLO_NUM_LAYERS}'])
 
     def forward(self, data):
         return_dict = {}
@@ -507,7 +395,7 @@ class GlobalPredictor(nn.Module):
         return self.mapping_to_detectron, self.orphans_in_detectron
 
 class DecomposedPredictor(nn.Module):
-    def __init__(self, feat_in_dim=None, mean_params=None):
+    def __init__(self, feat_in_dim=None, mean_params=None, pretrained=True):
         super(DecomposedPredictor, self).__init__()
 
         # For cache
@@ -547,11 +435,8 @@ class DecomposedPredictor(nn.Module):
             nn.ReLU(True),
             SmplResNet(resnet_nums=num_layers, in_channels=64, num_classes=13))
 
-        if not cfg.DANET.EVAL_MODE:
-            if num_layers == 18:
-                self.body_net[3].init_weights('data/pretrained_model/resnet18-5c106cde.pth')
-            elif num_layers == 50:
-                self.body_net[3].init_weights('data/pretrained_model/resnet50-19c8e357.pth')
+        if pretrained:
+            self.body_net[3].init_weights(cfg.MSRES_MODEL[f'PRETRAINED_{num_layers}'])
 
         self.smpl_children_tree = [[idx for idx, val in enumerate(self.smpl_parents[0]) if val == i] for i in range(24)]
 
@@ -613,11 +498,8 @@ class DecomposedPredictor(nn.Module):
                 SmplResNet(resnet_nums=limb_num_layers, in_channels=64, num_classes=0, truncate=1)
                 )
 
-        if not cfg.DANET.EVAL_MODE:
-            if limb_num_layers == 18:
-                self.limb_net[3].init_weights('data/pretrained_model/resnet18-5c106cde.pth')
-            elif limb_num_layers == 50:
-                self.limb_net[3].init_weights('data/pretrained_model/resnet50-19c8e357.pth')
+        if pretrained:
+            self.limb_net[3].init_weights(cfg.MSRES_MODEL[f'PRETRAINED_{limb_num_layers}'])
 
         self.rot_feat_len = cfg.DANET.REFINEMENT.FEAT_DIM
         self.pos_feat_len = cfg.DANET.REFINEMENT.FEAT_DIM
@@ -844,12 +726,12 @@ class DecomposedPredictor(nn.Module):
 
         if cfg.DANET.REFINE_STRATEGY == 'lstm_direct':
 
-            return_dict['smpl_pose'] = []
+            return_dict['joint_rotation'] = []
 
             local_para = self.pose_regressors[0](rot_feats.view(rot_feats.size(0), 24 * rot_feats.size(2), 1, 1)).view(
                 nbs, 24, -1)
             smpl_pose = local_para.view(local_para.size(0), -1)
-            return_dict['smpl_pose'].append(smpl_pose)
+            return_dict['joint_rotation'].append(smpl_pose)
 
             for s_i in range(cfg.DANET.REFINEMENT.STACK_NUM):
                 pos_feats = {}
@@ -886,8 +768,8 @@ class DecomposedPredictor(nn.Module):
 
         elif cfg.DANET.REFINE_STRATEGY == 'lstm':
 
-            return_dict['smpl_coord'] = []
-            return_dict['smpl_pose'] = []
+            return_dict['joint_position'] = []
+            return_dict['joint_rotation'] = []
 
             if self.training:
                 local_para = self.pose_regressors[0](rot_feats.view(rot_feats.size(0), 24*rot_feats.size(2), 1, 1)).view(nbs, 24, -1)
@@ -895,7 +777,7 @@ class DecomposedPredictor(nn.Module):
                 smpl_pose += self.mean_pose
                 if cfg.DANET.USE_6D_ROT:
                     smpl_pose = rot6d_to_rotmat(smpl_pose).view(local_para.size(0), -1)
-                return_dict['smpl_pose'].append(smpl_pose)
+                return_dict['joint_rotation'].append(smpl_pose)
 
             rot_feats_before = rot_feats
 
@@ -910,10 +792,10 @@ class DecomposedPredictor(nn.Module):
                         pos_feats[ind] = self.rot2pos[s_i][ind](pos_rot_feat_cat)
 
                 if self.training:
-                    if cfg.DANET.SMPL_KPS_WEIGHTS > 0 and cfg.DANET.REFINEMENT.POS_INTERSUPV:
+                    if cfg.DANET.JOINT_POSITION_WEIGHTS > 0 and cfg.DANET.REFINEMENT.POS_INTERSUPV:
                         coord_feats = torch.cat([pos_feats[i] for i in range(24)], dim=1)
                         smpl_coord = self.coord_regressors[s_i](coord_feats).view(nbs, 24, -1)
-                        return_dict['smpl_coord'].append(smpl_coord)
+                        return_dict['joint_position'].append(smpl_coord)
 
                 pos_feats_refined = {}
                 for br in range(len(self.limb_branch_lstm)):
@@ -937,10 +819,10 @@ class DecomposedPredictor(nn.Module):
                     pos_feats[i] = pos_feats[i].repeat(1, 2, 1, 1) + pos_feats_refined[i]
 
                 if self.training:
-                    if cfg.DANET.SMPL_KPS_WEIGHTS > 0 and cfg.DANET.REFINEMENT.POS_INTERSUPV:
+                    if cfg.DANET.JOINT_POSITION_WEIGHTS > 0 and cfg.DANET.REFINEMENT.POS_INTERSUPV:
                         coord_feats = torch.cat([pos_feats[i] for i in range(24)], dim=1)
                         smpl_coord = self.coord_regressors[s_i+1](coord_feats).view(nbs, 24, -1)
-                        return_dict['smpl_coord'].append(smpl_coord)
+                        return_dict['joint_position'].append(smpl_coord)
 
                 tri_pos_feats = [
                     torch.cat([pos_feats[self.smpl_parents[0][i]], pos_feats[i], pos_feats[self.smpl_children[1][i]]], dim=1)
@@ -961,8 +843,8 @@ class DecomposedPredictor(nn.Module):
 
         elif cfg.DANET.REFINE_STRATEGY == 'gcn':
 
-            return_dict['smpl_coord'] = []
-            return_dict['smpl_pose'] = []
+            return_dict['joint_position'] = []
+            return_dict['joint_rotation'] = []
 
             if self.training:
                 local_para = self.pose_regressors[0](rot_feats.view(rot_feats.size(0), 24 * rot_feats.size(2), 1, 1)).view(
@@ -971,8 +853,7 @@ class DecomposedPredictor(nn.Module):
                 smpl_pose += self.mean_pose
                 if cfg.DANET.USE_6D_ROT:
                     smpl_pose = rot6d_to_rotmat(smpl_pose).view(local_para.size(0), -1)
-                # smpl_pose = local_para[:, self.limb_ind_mapping].view(local_para.size(0), -1)
-                return_dict['smpl_pose'].append(smpl_pose)
+                return_dict['joint_rotation'].append(smpl_pose)
 
             rot_feats_before = rot_feats
 
@@ -980,10 +861,10 @@ class DecomposedPredictor(nn.Module):
             pos_feats_init = self.r2p_gcn(rot_feats_init, self.r2p_A[0])
 
             if self.training:
-                if cfg.DANET.SMPL_KPS_WEIGHTS > 0 and cfg.DANET.REFINEMENT.POS_INTERSUPV:
+                if cfg.DANET.JOINT_POSITION_WEIGHTS > 0 and cfg.DANET.REFINEMENT.POS_INTERSUPV:
                     coord_feats0 = pos_feats_init.unsqueeze(2).view(pos_feats_init.size(0), pos_feats_init.size(-1) * 24, 1, 1)
                     smpl_coord0 = self.coord_regressors[0](coord_feats0).view(nbs, 24, -1)
-                    return_dict['smpl_coord'].append(smpl_coord0)
+                    return_dict['joint_position'].append(smpl_coord0)
 
             if cfg.DANET.REFINEMENT.REFINE_ON:
                 graph_A = self.A_mask * self.edge_act(self.edge_importance)
@@ -994,14 +875,13 @@ class DecomposedPredictor(nn.Module):
                 pos_feats_refined = l_pos_feat
 
                 if self.training:
-                    if cfg.DANET.SMPL_KPS_WEIGHTS > 0 and cfg.DANET.REFINEMENT.POS_INTERSUPV:
+                    if cfg.DANET.JOINT_POSITION_WEIGHTS > 0 and cfg.DANET.REFINEMENT.POS_INTERSUPV:
                         coord_feats1 = pos_feats_refined.unsqueeze(2).view(pos_feats_refined.size(0),
                                                                            pos_feats_refined.size(-1) * 24, 1, 1)
                         smpl_coord1 = self.coord_regressors[1](coord_feats1).view(nbs, 24, -1)
-                        return_dict['smpl_coord'].append(smpl_coord1)
+                        return_dict['joint_position'].append(smpl_coord1)
             else:
                 pos_feats_refined = pos_feats_init
-
 
             rot_feats_refined = self.p2r_gcn(pos_feats_refined, self.p2r_A[0])
 
@@ -1016,15 +896,15 @@ class DecomposedPredictor(nn.Module):
 
         elif cfg.DANET.REFINE_STRATEGY == 'gcn_direct':
 
-            return_dict['smpl_coord'] = []
-            return_dict['smpl_pose'] = []
+            return_dict['joint_position'] = []
+            return_dict['joint_rotation'] = []
 
             local_para = self.pose_regressors[0](rot_feats.view(rot_feats.size(0), 24 * rot_feats.size(2), 1, 1)).view(
                 nbs, 24, -1)
             smpl_pose = local_para.view(local_para.size(0), -1)
 
             if cfg.DANET.REFINEMENT.REFINE_ON:
-                return_dict['smpl_pose'].append(smpl_pose)
+                return_dict['joint_rotation'].append(smpl_pose)
 
                 pos_feats_init = rot_feats.squeeze(-1).squeeze(-1)
 

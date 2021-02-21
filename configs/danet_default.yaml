@@ -2,20 +2,14 @@ SOLVER:
   MAX_ITER: 500000
   TYPE: 'Adam'
   BASE_LR: 0.0001
-  WEIGHT_DECAY: 0.001
-#  STEPS: [0, 30000, 60000]
-  STEPS: [0]
+  STEPS: [0, 30000, 60000]
 DANET:
-  EVAL_MODE: True
+  INIMG_SIZE: 224
   DECOMPOSED: True
   INPUT_MODE: 'iuv'    # 'rgb', 'iuv', 'iuv_gt', 'iuv_feat', 'iuv_gt_feat', 'feat', 'seg'
-  PRETR_STEP: 5000
-  SHAPE_PARA_WEIGHTS: 10
-  POSE_PARA_WEIGHTS: 10
   USE_6D_ROT: True
   GTCAM_FOR_REPJ: True
   GTSHAPE_FOR_REPJ: True
-#  ZERO_PELVIS: False
   GLO_NUM_LAYERS: 18
   SMPL_MODEL_TYPE: 'neutral'   #  'male' 'neutral' 'female'
   IUV_REGRESSOR: 'hrnet'    #  'hrnet'   'resnet'
@@ -27,14 +21,26 @@ DANET:
   PART_WEIGHTS: 0.3
   # Loss weights for UV regression.
   POINT_REGRESSION_WEIGHTS: 0.5
+  # Loss weights for SMPL prediction.
+  SMPL_POSE_WEIGHTS: 60.0
+  SMPL_BETAS_WEIGHTS: 0.06
+  PROJ_KPS_WEIGHTS: 300.0
+  KPS3D_WEIGHTS: 300.0
+  VERTS_WEIGHTS: 0
+  # Loss weights for orthogonal constraints of rotational pose
+  ORTHOGONAL_WEIGHTS: 0
+  # Loss weights for Position-aided Rotation Feature Refinement.
+  JOINT_POSITION_WEIGHTS: 1.0
+  # Loss weights for Joint-centric RoI pooling
+  STN_KPS_WEIGHTS: 1.0
+  STN_HM_WEIGHTS: 0
+  # Joint jitter scale for Joint-centric RoI pooling (for training)
   STN_CENTER_JITTER: 0.1
   STN_SCALE_JITTER: 0.2
+  # Threshold of visible body parts
   STN_PART_VIS_SCORE: 0.5
-  STN_HM_WEIGHTS: 0
   USE_LEARNED_RATIO: True
-  PART_IUV_ZERO: 0.3
-  INIMG_SIZE: 224
-  STN_KPS_WEIGHTS: 1
+  PARTDROP_RATE: 0.3
   REFINE_STRATEGY: 'gcn'   # 'lstm', 'lstm_direct', 'gcn', 'gcn_direct'
   REFINEMENT:
     REFINE_ON: True
@@ -44,10 +50,9 @@ DANET:
     POS_INTERSUPV: True
 MSRES_MODEL:
   NAME: 'pose_resnet'
+  PRETRAINED_18: 'data/pretrained_model/resnet18-5c106cde.pth'
   PRETRAINED_50: 'data/pretrained_model/resnet50-19c8e357.pth'
   PRETRAINED_101: 'data/pretrained_model/resnet101-5d3b4d8f.pth'
-  PRETRAINED_50_COCO: 'data/pretrained_model/pose_resnet_50_256x192.pth.tar'
-  PRETRAINED_101_COCO: 'data/pretrained_model/pose_resnet_101_256x192.pth.tar'
   EXTRA:
     TARGET_TYPE: 'gaussian'
     HEATMAP_SIZE:
@@ -71,7 +76,7 @@ HR_MODEL:
   NAME: pose_hrnet
   PRETR_SET: 'coco'   # 'none' 'imagenet' 'coco'
   PRETRAINED_IM: 'data/pretrained_model/hrnet_w48-imgnet-8ef0771d.pth'
-  PRETRAINED_COCO: '' # 'data/pretrained_model/pose_hrnet_w48_256x192.pth'
+  PRETRAINED_COCO: 'data/pretrained_model/pose_hrnet_w48_256x192.pth'
   TARGET_TYPE: gaussian
   IMAGE_SIZE:
   - 256

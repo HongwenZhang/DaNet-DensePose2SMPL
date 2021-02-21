@@ -553,7 +553,7 @@ __C.SOLVER = AttrDict()
 __C.SOLVER.TYPE = 'SGD'
 
 # Base learning rate for the specified schedule
-__C.SOLVER.BASE_LR = 0.001
+__C.SOLVER.BASE_LR = 0.0001
 
 # Schedule type (see functions in utils.lr_policy for options)
 # E.g., 'step', 'steps_with_decay', ...
