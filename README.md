@@ -2,7 +2,7 @@
 
 This repository contains the code for the following paper:
 
-**[Learning 3D Human Shape and Pose from Dense Body Parts](https://hongwenzhang.github.io/DensePose2SMPL)**
+**[Learning 3D Human Shape and Pose from Dense Body Parts](https://hongwenzhang.github.io/DensePose2SMPL)** 
 Hongwen Zhang, Jie Cao, Guo Lu, Wanli Ouyang, Zhenan Sun
 
 TPAMI, 2020
