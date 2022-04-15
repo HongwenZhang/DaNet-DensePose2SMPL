@@ -1,8 +1,13 @@
 # Learning 3D Human Shape and Pose from Dense Body Parts
 
-This repository includes the PyTorch code of the network described in [Learning 3D Human Shape and Pose from Dense Body Parts](https://hongwenzhang.github.io/dense2mesh/pdf/learning3Dhuman.pdf).
+This repository contains the code for the following paper:
 
-[![Project Page](https://hongwenzhang.github.io/dense2mesh/img/framework.png "Project Page")](https://hongwenzhang.github.io/dense2mesh)
+**[Learning 3D Human Shape and Pose from Dense Body Parts](https://hongwenzhang.github.io/DensePose2SMPL)**
+Hongwen Zhang, Jie Cao, Guo Lu, Wanli Ouyang, Zhenan Sun
+
+TPAMI, 2020
+
+[![Project Page](https://hongwenzhang.github.io/DensePose2SMPL/img/framework.png "Project Page")](https://hongwenzhang.github.io/DensePose2SMPL)
 
 ## Requirements
 
@@ -72,7 +77,7 @@ python3 demo.py --checkpoint=data/pretrained_model/danet_model_h36m_itw.pt --img
 2. View visualization results in `./output`. Results are organized (from left to right) as the input image, the estimated IUV maps (global and partial), the rendered IUV of the predicted SMPL model, the predicted SMPL model (front and side views).
 
 <p align='center'>
-<img src='https://hongwenzhang.github.io/dense2mesh/img/demo_result.png' title='demo results' style='max-width:600px'></img>
+<img src='https://hongwenzhang.github.io/DensePose2SMPL/img/demo_result.png' title='demo results' style='max-width:600px'></img>
 </p>
 
 ## Evaluation
@@ -115,11 +120,14 @@ Running the above command will use Human3.6M and DensePose-COCO for training by 
 ## Citation
 If this work is helpful in your research, please cite the following paper.
 ```
-@article{zhang2020learning,
+@article{zhang2020densepose2smpl,
   title={Learning 3D Human Shape and Pose from Dense Body Parts},
   author={Zhang, Hongwen and Cao, Jie and Lu, Guo and Ouyang, Wanli and Sun, Zhenan},
   journal={IEEE Transactions on Pattern Analysis and Machine Intelligence},
-  year={2020}
+  volume={44},
+  number={5},
+  pages={2610--2627},
+  year={2022},
 }
 ```
 
