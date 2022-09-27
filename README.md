@@ -8,6 +8,8 @@ Hongwen Zhang, Jie Cao, Guo Lu, Wanli Ouyang, Zhenan Sun
 TPAMI, 2020
 
 [![Project Page](https://hongwenzhang.github.io/DensePose2SMPL/img/framework.png "Project Page")](https://hongwenzhang.github.io/DensePose2SMPL)
+[![Project Page](https://hongwenzhang.github.io/DensePose2SMPL/img/demo_3dpw.png "Project Page")](https://hongwenzhang.github.io/DensePose2SMPL)
+
 
 ## Requirements
 
